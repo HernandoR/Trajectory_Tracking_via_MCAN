@@ -10,8 +10,10 @@ import random
 import geopandas as gpd
 
 import math
+import scienceplots
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+
 from matplotlib_scalebar.scalebar import ScaleBar
 import numpy as np
 

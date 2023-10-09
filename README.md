@@ -7,3 +7,18 @@ This repository is an implementation of the paper 'Trajectory Tracking via Multi
 The simulator extracts road network data from Open Street Maps to generate an occupancy map consisting of traversable, realistic roads. The occupied cells in the map represent the drivable areas of the road network. A path-finding distance transform algorithm, is then used to find the optimal route between two randomly generated points on the road map. Once the sample paths are generated, they can be traversed using the kinematics of a [bicycle motion model](https://github.com/winstxnhdw/KinematicBicycleModel), which is a common model used in the navigation of ground vehicles. During the traversal of the paths, motion information such as linear and angular velocities are recorded. This motion data is then used to evaluate the performance of the system, such as the accuracy of the estimated position and heading, the stability of the continuous attractor network, and the effectiveness of the buffer to prevent position resetting.
 ![image info](./Results/PaperFigures/BerlinPathFollowing.gif)
 
+## Install
+```
+conda create -n MCAN --file environment.yml
+conda activate MCAN
+```
+check out pip path
+
+```
+which pip
+pip install -r requirements.txt
+```
+if you have problem with installing libtiff.so.5, try
+```
+sudo apt install libtiff5-dev 
+```

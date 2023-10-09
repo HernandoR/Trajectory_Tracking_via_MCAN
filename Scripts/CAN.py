@@ -5,10 +5,14 @@ import random
 import pandas as pd
 from scipy import signal
 from scipy import ndimage
+
+import scienceplots
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.animation as animation
+
 from matplotlib.colors import ListedColormap
+
 from matplotlib.artist import Artist
 from mpl_toolkits.mplot3d import Axes3D 
 

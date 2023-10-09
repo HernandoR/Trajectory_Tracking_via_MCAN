@@ -1,6 +1,7 @@
 import random
 import numpy as np
 from CAN import attractorNetwork2D, attractorNetwork, activityDecoding,activityDecodingAngle,headDirectionAndPlaceNoWrapNet
+import scienceplots
 import matplotlib.pyplot as plt
 import math
 import time 

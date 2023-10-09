@@ -1,0 +1,4 @@
+easy_trilateration
+roboticstoolbox-python
+spatialmath-python
+-e git+https://github.com/garrettj403/SciencePlots.git#egg=SciencePlots

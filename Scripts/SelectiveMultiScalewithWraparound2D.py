@@ -1,3 +1,4 @@
+import scienceplots
 import matplotlib.pyplot as plt
 import matplotlib.axes as axes
 import numpy as np
@@ -14,6 +15,7 @@ from scipy import ndimage
 import time 
 from os import listdir
 import sys
+
 sys.path.append('./scripts')
 from CAN import headDirectionAndPlaceNoWrapNet, pathIntegration, errorTwoCoordinateLists
 plt.style.use(['science','ieee'])
@@ -548,4 +550,4 @@ def resposneToVelSpikes(randomSeedVariation=5,run=False,plotting=False):
         ax0.set_xlabel('x[m]')
         plt.savefig(plotPath)
 
-# resposneToVelSpikes(randomSeedVariation=7,run=True,plotting='Position')
+resposneToVelSpikes(randomSeedVariation=7,run=True,plotting='Position')

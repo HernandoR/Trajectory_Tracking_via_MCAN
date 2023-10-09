@@ -1,0 +1,35 @@
+Berlin:
+  city: Berlin
+  center: [52.520008, 13.404954]
+  shp_path: "data/Geospatial/Berlin/gis_osm_roads_free_1.shp"
+  map_path: "Datasets/CityScaleSimulatorMaps/berlin_5kmrad_0.2Line_100pdi.png"
+  min_maxspeed: 5
+  pathfile: "Datasets/CityScaleSimulatorPaths/berlin_5kmrad_100pdi_0.2line.npy"
+brisbane:
+  city: brisbane
+  center: [-27.470125, 153.021072]
+  shp_path: "data/Geospatial/Brisbane/gis_osm_roads_free_1.shp"
+  map_path: "Datasets/CityScaleSimulatorMaps/brisbane_5kmrad_1Line_300pdi.png"
+  min_maxspeed: 5
+  pathfile: "Datasets/CityScaleSimulatorPaths/brisbane_5kmrad_300pdi_1line.npy"
+# japan:
+#   city: japan
+#   center: [35.652832,139.839478]
+#   map_path: './results/TestEnvironmentFiles/TestingMaps/japan_5kmrad_1Line_300pdi.png'
+#   shp_path: './data/Geospatial/Kanto/gis_osm_roads_free_1.shp'
+#   min_maxspeed: 5
+#   pathfile: './Datasets/CityScaleSimulatorPaths/japan_5kmrad_300pdi_1line.npy'
+tokyo:
+  city: tokyo
+  center: [35.652832, 139.839478]
+  shp_path: "data/Geospatial/Kanto/gis_osm_roads_free_1.shp"
+  map_path: "Datasets/CityScaleSimulatorMaps/tokyo_5kmrad_1Line_100pdi.png"
+  min_maxspeed: 5
+  pathfile: "Datasets/CityScaleSimulatorPaths/japan_5kmrad_300pdi_1line.npy"
+newyork:
+  city: newyork
+  center: [40.730610, -73.935242]
+  shp_path: "data/Geospatial/NewYork/gis_osm_roads_free_1.shp"
+  map_path: "Datasets/CityScaleSimulatorMaps/newyork_5kmrad_1Line_300pdi.png"
+  min_maxspeed: 10
+  pathfile: "Datasets/CityScaleSimulatorPaths/newyork_5kmrad_300pdi_1line.npy"
