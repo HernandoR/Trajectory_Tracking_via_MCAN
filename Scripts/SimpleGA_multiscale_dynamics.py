@@ -108,6 +108,7 @@ class GeneticAlgorithm:
             genome=[self.rand(0,'int'), self.rand(1,'int'),self.rand(2,'uni'),self.rand(3,'uni'), self.rand(4,'int')] #no wrap iters
             # genome=[self.rand(0,'int'), self.rand(1,'int'),self.rand(2,'uni'),self.rand(3,'uni'), self.rand(4,'int'), self.rand(5,'int')] #2d 
             population.append(genome)
+        population=np.array(population,dtype=float)
         return population 
 
     def mutate(self, genome):
@@ -147,6 +148,7 @@ class GeneticAlgorithm:
             return -10000000000
 
     def sortByFitness(self,population,topK):
+        # TODO- Speed bottleneck
         # fitness for each genome 
         # sort genomes by fitness
         fitness=np.zeros(len(population))
