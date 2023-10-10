@@ -206,7 +206,7 @@ class GeneticAlgorithm:
 def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
 
     if run1D==True:
-        filename=f'./Results/GA_Experiment_Output/TuningHeadDirection1.npy'
+        filename=f'./Results/GA_Results/TuningHeadDirection1.npy'
         # mutate_amount=np.array([int(np.random.normal(0,1)), int(np.random.normal(0,1)), np.random.normal(0,0.005), np.random.normal(0,0.00005), int(np.random.normal(0,1)), int(np.random.normal(0,1))])
         ranges =  [[1,20],[1,20],[0.05,4],[0,0.1],[1,2]]
         fitnessFunc=  headDirectionFitness
@@ -221,8 +221,8 @@ def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
         GeneticAlgorithm(num_gens,population_size,filename,fitnessFunc,ranges,scales, angVels, vels, dim='1D', numProcess=12).implimentGA()
 
     if plotting1D==True:
-        filename=f'./Results/GA_Experiment_Output/TuningHeadDirection1.npy'
-        savePath=f'./Results/GA_Experiment_Output/GA_HeadDirection_Plot.png'
+        filename=f'./Results/GA_Results/TuningHeadDirection1.npy'
+        savePath=f'./Results/GA_Results/GA_HeadDirection_Plot.png'
         with open(filename, 'rb') as f:
             data = np.load(f)
         mean_1=np.array([np.mean(fit) for fit in data[:,:,-1]])
@@ -241,7 +241,7 @@ def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
         print(data[-1,0,:])
 
     if run2D==True:
-        filename=f'./Results/GA_Experiment_Output/TuningMultiscale1.npy'
+        filename=f'./Results/GA_Results/TuningMultiscale1.npy'
         # mutate_amount=np.array([int(np.random.normal(0,1)), int(np.random.normal(0,1)), np.random.normal(0,0.005), np.random.normal(0,0.00005), int(np.random.normal(0,1)), int(np.random.normal(0,1))])
         # ranges = [[1,20],[1,20],[0,1],[0.00001, 0.005],[1,5], [1,5]]
         ranges = [[1,10],[1,10],[0,1],[0,0.005],[1,2]]
@@ -256,8 +256,8 @@ def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
         GeneticAlgorithm(num_gens,population_size,filename,fitnessFunc,ranges,scales, dirs, vels, dim='2D',numProcess=12).implimentGA()
 
     if plotting2D==True:
-        filename=f'./Results/GA_Experiment_Output/TuningMultiscale1.npy'
-        savePath=f'./Results/GA_Experiment_Output/GA_multiscale_Plot.png'
+        filename=f'./Results/GA_Results/TuningMultiscale1.npy'
+        savePath=f'./Results/GA_Results/GA_multiscale_Plot.png'
         with open(filename, 'rb') as f:
             data = np.load(f)
         mean_1=np.array([np.mean(fit) for fit in data[:,:,-1]])
@@ -277,13 +277,13 @@ def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
     
 
 def plotAllGA():
-    filename=f'./Results/GA_Experiment_Output/TuningHeadDirection1.npy'
+    filename=f'./Results/GA_Results/TuningHeadDirection1.npy'
     with open(filename, 'rb') as f:
         data = np.load(f)
     mean_1=np.array([np.mean(fit) for fit in data[:,:,-1]])
     std_1=np.array([np.std(fit) for fit in data[:,:,-1]])
 
-    filename2=f'./Results/GA_Experiment_Output/TuningMultiscale1.npy'
+    filename2=f'./Results/GA_Results/TuningMultiscale1.npy'
     with open(filename2, 'rb') as f:
         data = np.load(f)
         mean_2=np.array([np.mean(fit) for fit in data[:,:,-1]])
@@ -309,7 +309,7 @@ def plotAllGA():
     ax2.tick_params(axis='y', labelsize=6)
     ax1.ticklabel_format(axis='both', style='sci', scilimits=(-1000,1000))
     fig.legend((l1, l2),('1D Network Tuning','2D Network Tuning'),loc='upper center', bbox_to_anchor=(0.5,1.05),ncol=2, columnspacing=5.5)
-    plt.savefig('./Results/GA_Experiment_Output/1D_2D_NetworkTuning.png')
+    plt.savefig('./Results/GA_Results/1D_2D_NetworkTuning.png')
     plt.savefig('./Results/PaperFigures/8_1D_2D_NetworkTuning.pdf')
 
 
@@ -320,9 +320,9 @@ if __name__ == '__main__':
     # runGA(run1D= True, plotting1D=True)
     # print(f'1D GA duration {time.time()-t1}')
 
-    # t2=time.time()
-    # runGA(run2D= True, plotting2D=True)
-    # print(f'2D GA duration {time.time()-t2}')
+    t2=time.time()
+    runGA(run2D= True, plotting2D=True)
+    print(f'2D GA duration {time.time()-t2}')
 
     plotAllGA()
 
