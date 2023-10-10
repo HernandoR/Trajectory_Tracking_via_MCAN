@@ -17,7 +17,7 @@ from os import listdir
 import sys
 
 sys.path.append('./scripts')
-from CAN import headDirectionAndPlaceNoWrapNet, pathIntegration, errorTwoCoordinateLists
+from CAN import headDirectionAndPlaceNoWrapNet, pathIntegration, errorTwoCoordinateLists, positionToVel2D
 plt.style.use(['science','ieee'])
 # plt.style.use(['science','no-latex'])
 
