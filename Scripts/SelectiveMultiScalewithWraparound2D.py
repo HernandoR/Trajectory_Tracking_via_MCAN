@@ -16,8 +16,9 @@ import time
 from os import listdir
 import sys
 
+import CAN
 sys.path.append('./scripts')
-from CAN import headDirectionAndPlaceNoWrapNet, pathIntegration, errorTwoCoordinateLists, positionToVel2D
+# from CAN import CAN.headDirectionAndPlaceNoWrapNet, pathIntegration, CAN.errorTwoCoordinateLists, positionToVel2D
 plt.style.use(['science','ieee'])
 # plt.style.use(['science','no-latex'])
 
@@ -86,7 +87,7 @@ def runningAllPathsFromACity(City, scaleType, run=False, plotting=False):
             # vel=np.concatenate([np.linspace(0,scales[0]*5,iterPerScale), np.linspace(scales[0]*5,scales[1]*5,iterPerScale), np.linspace(scales[1]*5,scales[2]*5,iterPerScale), np.linspace(scales[2]*5,scales[3]*5,iterPerScale)])
             np.random.seed(index*randomSeedVariation)
             vel=np.random.uniform(0,20,test_length) 
-            headDirectionAndPlaceNoWrapNet(scales, vel, angVel,pathfile+f'{index}.npy', N=numNeurons,printing=False)
+            CAN.CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,pathfile+f'{index}.npy', N=numNeurons,printing=False)
             print(f'finished {City}, id {index}')
     
     if plotting==True:
@@ -95,7 +96,7 @@ def runningAllPathsFromACity(City, scaleType, run=False, plotting=False):
             np.random.seed(i*randomSeedVariation)
             vel=np.random.uniform(0,20,len(x_grid)) 
             dist=np.sum(vel)
-            ATE.append(errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid)/dist)
+            ATE.append(CAN.errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid)/dist)
 
         orderedErrorIDs=np.argsort(ATE)
         print(orderedErrorIDs)
@@ -157,7 +158,7 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
                 test_length=1000
             test_length=len(vel)
 
-            headDirectionAndPlaceNoWrapNet(scales, vel, angVel,pathfile+f'{index}.npy', N=numNeurons,printing=False)
+            CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,pathfile+f'{index}.npy', N=numNeurons,printing=False)
             print(f'Finished vels {index}')
     
     if plotting==True:
@@ -168,7 +169,7 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
                 velFile=f'./Datasets/kittiVelocities/kittiVels_0{i}.npy'
             vel,angVel=np.load(velFile)
             x_grid,y_grid,x_integ, y_integ, x_integ_err, y_integ_err = np.load(pathfile+f'{i}.npy')
-            ATE.append(errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid)/np.sum(vel))
+            ATE.append(CAN.errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid)/np.sum(vel))
 
         orderedErrorIDs=np.argsort(ATE)
         print(orderedErrorIDs)
@@ -237,13 +238,13 @@ def mutliVs_single(filepath, index, desiredTestLength, run=False, plotting=False
         errors=[]
         for i in range(1,21):
             vel=np.random.uniform(0,i,test_length)
-            true_x,true_y=pathIntegration(vel,angVel)
+            true_x,true_y=CAN.pathIntegration(vel,angVel)
 
             scales=[1]
-            singleError=headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None, N=200, returnTypes='Error', printing=False)
+            singleError=CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None, N=200, returnTypes='Error', printing=False)
             
             scales=[0.25,1,4,16]
-            multipleError=headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None,returnTypes='Error', printing=False)
+            multipleError=CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None,returnTypes='Error', printing=False)
     
             errors.append([singleError,multipleError])
 
@@ -287,14 +288,14 @@ def CumalativeError_SinglevsMulti(singlePath, multiPath, run=False, plotting=Fal
 
     if run==True:
         scales=[1]
-        headDirectionAndPlaceNoWrapNet(scales, vel, angVel,singlePath, returnTypes='posInteg+CAN', printing=False)
+        CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,singlePath, returnTypes='posInteg+CAN', printing=False)
         scales=[0.25,1,4,16]
-        headDirectionAndPlaceNoWrapNet(scales, vel, angVel,multiPath,returnTypes='posInteg+CAN', printing=False)
+        CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,multiPath,returnTypes='posInteg+CAN', printing=False)
     if plotting==True:
         x_gridM,y_gridM, x_integM, y_integM, x_integ_err, y_integ_err= np.load(multiPath)
         x_gridS,y_gridS, x_integS, y_integS, x_integ_err, y_integ_err= np.load(singlePath)
-        multipleError=errorTwoCoordinateLists(x_integM, y_integM,x_gridM,y_gridM,errDistri=True)
-        singleError=errorTwoCoordinateLists(x_integS, y_integS,x_gridS,y_gridS,errDistri=True)
+        multipleError=CAN.errorTwoCoordinateLists(x_integM, y_integM,x_gridM,y_gridM,errDistri=True)
+        singleError=CAN.errorTwoCoordinateLists(x_integS, y_integS,x_gridS,y_gridS,errDistri=True)
         fig,(ax1,ax2) = plt.subplots(1,2,figsize=(3.6, 2.2))
         # fig.legend(['MultiscaleCAN', 'Grid'])
         fig.tight_layout()
@@ -332,11 +333,11 @@ def plotMultiplePathsErrorDistribution():
     errorSingle,erroMulti=[],[]
     for i in range(length):
         x_grid,y_grid,x_integ, y_integ, x_integ_err, y_integ_err = np.load(pathfileSingle+f'{i}.npy')
-        errorSingle.append(errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid))
+        errorSingle.append(CAN.errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid))
  
     for i in range(length):
         x_grid,y_grid,x_integ, y_integ, x_integ_err, y_integ_err = np.load(pathfileMulti+f'{i}.npy')
-        erroMulti.append(errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid))
+        erroMulti.append(CAN.errorTwoCoordinateLists(x_integ, y_integ,x_grid,y_grid))
  
     # plt.subplots_adjust(bottom=0.2)
     axs.bar(np.arange(length),errorSingle,color='royalblue')
@@ -460,12 +461,12 @@ def scaleAblation(scaleRatios,numScales,randomSeedVariation=5, run=False, plotti
                 scales=generatinScales(ratio, length)
                 
                 # t=time.time()
-                # errors[i,j]=headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None, printing=False, returnTypes='Error')
+                # errors[i,j]=CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None, printing=False, returnTypes='Error')
                 # durations[i,j]=(time.time()-t)
 
-                x_integ,y_integ, x_grid, y_grid=headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None, returnTypes='posInteg+CAN')
-                vel_CANoutput,angVel_CANoutput=positionToVel2D(x_grid,y_grid)
-                vel_GT,angVel_GT=positionToVel2D(x_integ,y_integ)
+                x_integ,y_integ, x_grid, y_grid=CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,None, returnTypes='posInteg+CAN')
+                vel_CANoutput,angVel_CANoutput=CAN.positionToVel2D(x_grid,y_grid)
+                vel_GT,angVel_GT=CAN.positionToVel2D(x_integ,y_integ)
                 errors[i,j]=np.sum(abs(vel_CANoutput-vel_GT))
 
                 print(f'Finished ratio {ratio} and length {length}')
@@ -522,8 +523,8 @@ def resposneToVelSpikes(randomSeedVariation=5,run=False,plotting=False):
         scales=[0.25,1,4,16]
         
 
-        x_integ,y_integ, x_grid, y_grid=headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath2, returnTypes='posInteg+CAN')
-        vel_CANoutput,angVel_CANoutput=positionToVel2D(x_grid,y_grid)
+        x_integ,y_integ, x_grid, y_grid=CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath2, returnTypes='posInteg+CAN')
+        vel_CANoutput,angVel_CANoutput=CAN.positionToVel2D(x_grid,y_grid)
 
         # np.save(savePath,np.array([vel,vel_CANoutput]))
     
