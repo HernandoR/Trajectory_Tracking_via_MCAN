@@ -690,7 +690,7 @@ def main():
 
         scale = 1
         path_x, path_y, scaled_img, path_img, currentPxlPerMeter = rescalePath(
-            paths, path_num, img, scale, pxlPerMeter
+            paths, path_idx, img, scale, pxlPerMeter
         )
         noVisualizationDrive(
             path_x,
@@ -726,8 +726,7 @@ def main():
     plt.axis("equal")
     plt.title(f"simulation on {city} map")
     plt.legend(["Integrated Position", "True Position", "Simulated Path"])
-    plt.show()
-    input("press enter to exit")
+    plt.savefig(f"path_planning_in_{city}.png")
 
 
 if __name__ == "__main__":

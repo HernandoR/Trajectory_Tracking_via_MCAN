@@ -87,7 +87,7 @@ def runningAllPathsFromACity(City, scaleType, run=False, plotting=False):
             # vel=np.concatenate([np.linspace(0,scales[0]*5,iterPerScale), np.linspace(scales[0]*5,scales[1]*5,iterPerScale), np.linspace(scales[1]*5,scales[2]*5,iterPerScale), np.linspace(scales[2]*5,scales[3]*5,iterPerScale)])
             np.random.seed(index*randomSeedVariation)
             vel=np.random.uniform(0,20,test_length) 
-            CAN.CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,pathfile+f'{index}.npy', N=numNeurons,printing=False)
+            CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel, pathfile+f'{index}.npy', N=numNeurons,printing=False)
             print(f'finished {City}, id {index}')
     
     if plotting==True:
@@ -210,16 +210,16 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
 
 scaleType='Single'
 # runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-# runningAllPathsFromACity('NewYork', scaleType, run=False, plotting=True)
+runningAllPathsFromACity('NewYork', scaleType, run=False, plotting=True)
 # runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
 # runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
 # runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
 print('')
 scaleType='Multi'
 # runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-# runningAllPathsFromACity('NewYork', scaleType, run=False, plotting=True)
+runningAllPathsFromACity('NewYork', scaleType, run=False, plotting=True)
 # runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
-runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
+# runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
 # runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
 
 

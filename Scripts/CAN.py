@@ -107,7 +107,7 @@ class attractorNetwork:
 
 
 class attractorNetwork2D:
-    '''defines 1D attractor network with N neurons, angles associated with each neurons 
+    '''defines 2D attractor network with N1*N2 neurons, angles associated with each neurons 
     along with inhitory and excitatory connections to update the weights'''
     def __init__(self, N1, N2, num_links, excite_radius, activity_mag,inhibit_scale):
         self.excite_radius=int(excite_radius)
@@ -504,10 +504,11 @@ def headDirection(theta_weights, angVel, init_angle):
     return theta_weights
 
 
-def hierarchicalNetwork2DGridNowrapNet(prev_weights, net,N, vel, direction, iterations, wrap_iterations, x_grid_expect, y_grid_expect,scales):
+def hierarchicalNetwork2DGridNowrapNet(
+    prev_weights, net,N, vel, direction, iterations, wrap_iterations, x_grid_expect, y_grid_expect,scales):
     '''Select scale and initilise wrap storage'''
     delta = [(vel/scales[i]) for i in range(len(scales))]
-    cs_idx=scale_selection(vel,scales)
+    chosen_scale_idx=scale_selection(vel,scales)
     # print(vel, scales, cs_idx)
     wrap_rows=np.zeros((len(scales)))
     wrap_cols=np.zeros((len(scales)))
@@ -515,10 +516,11 @@ def hierarchicalNetwork2DGridNowrapNet(prev_weights, net,N, vel, direction, iter
     '''Update selected scale'''
 
     for i in range(iterations):
-        prev_weights[cs_idx][:], wrap_rows_cs, wrap_cols_cs= net.update_weights_dynamics(prev_weights[cs_idx][:],direction, delta[cs_idx])
-        prev_weights[cs_idx][prev_weights[cs_idx][:]<0]=0
-        x_grid_expect+=wrap_cols_cs*N*scales[cs_idx]
-        y_grid_expect+=wrap_rows_cs*N*scales[cs_idx]
+        prev_weights[chosen_scale_idx][:], wrap_rows_cs, wrap_cols_cs= net.update_weights_dynamics(
+            prev_weights[chosen_scale_idx][:],direction, delta[chosen_scale_idx])
+        prev_weights[chosen_scale_idx][prev_weights[chosen_scale_idx][:]<0]=0
+        x_grid_expect+=wrap_cols_cs*N*scales[chosen_scale_idx]
+        y_grid_expect+=wrap_rows_cs*N*scales[chosen_scale_idx]
     
 
 
@@ -544,7 +546,8 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath, printing=False,
         wrap_iterations=int(genome[5])
      
     else:
-        num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=10,2,1.10262708e-01,6.51431074e-04,3,2 #with decimals 200 iters fitness -395 modified
+        num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=\
+            10,2,1.10262708e-01,6.51431074e-04,3,2 #with decimals 200 iters fitness -395 modified
         # num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=11,8,5.09182735e-01,2.78709739e-04,5,2
     network=attractorNetwork2D(N,N,num_links,excite, activity_mag,inhibit_scale)
 
@@ -580,15 +583,17 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath, printing=False,
         x_integ.append(q[0])
         y_integ.append(q[1])
 
-
+        #TODO  go through next 15 lines find input
         '''Mutliscale CAN update'''
         N_dir=360
         theta_weights=headDirection(theta_weights, np.rad2deg(angVel[i]), 0)
         direction=activityDecodingAngle(theta_weights,5,N_dir)
-        prev_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(prev_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
+        prev_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(
+            prev_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
 
         '''1D method for decoding'''
-        maxXPerScale, maxYPerScale = np.array([np.argmax(np.max(prev_weights[m], axis=1)) for m in range(len(scales))]), np.array([np.argmax(np.max(prev_weights[m], axis=0)) for m in range(len(scales))])
+        maxXPerScale, maxYPerScale = (np.array([np.argmax(np.max(prev_weights[m], axis=1)) for m in range(len(scales))]),
+                                      np.array([np.argmax(np.max(prev_weights[m], axis=0)) for m in range(len(scales))]))
         decodedXPerScale=[activityDecoding(prev_weights[m][maxXPerScale[m], :],5,N)*scales[m] for m in range(len(scales))]
         decodedYPerScale=[activityDecoding(prev_weights[m][:,maxYPerScale[m]],5,N)*scales[m] for m in range(len(scales))]
         x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale), np.sum(decodedYPerScale)
