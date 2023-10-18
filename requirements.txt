@@ -1,4 +1,8 @@
 easy_trilateration
 roboticstoolbox-python
 spatialmath-python
+plotnine
+geopandas
+folium
+geopy
 -e git+https://github.com/garrettj403/SciencePlots.git#egg=SciencePlots

@@ -8,6 +8,7 @@ import geopy
 import geopy.distance
 import random
 import geopandas as gpd
+import yaml
 
 import math
 import scienceplots
@@ -39,7 +40,7 @@ def saveRoadMap(shp_path, savePath, center,n):
 
     unqiue_speeds=np.sort(berlin.maxspeed.unique())
     print(unqiue_speeds)
-    # cmap = plt.get_cmap('tab20c', len(unqiue_speeds) ) # brisbane 
+    # cmap = plt.get_cmap('tab20c', len(unqiue_speeds) ) # brisbane
     # cmap = plt.get_cmap('Set2_r', len(unqiue_speeds) ) # berlin
     # cmap = plt.get_cmap('Set1_r', len(unqiue_speeds) ) #japan
     cmap = plt.get_cmap('Paired', len(unqiue_speeds) ) #newyork
@@ -69,30 +70,38 @@ def saveRoadMap(shp_path, savePath, center,n):
 
     plt.axis('off')
     dpi=300
-    
+
     plt.savefig(savePath, bbox_inches='tight', dpi=dpi)
     # plt.show()
 
 '''berlin'''
-center = [52.520008,13.404954]
-shp_path ='./Datasets/CityScaleSimulatorMaps/Berlin/gis_osm_roads_free_1.shp' 
-savePath='./Datasets/CityScaleSimulatorMaps/berlin_5kmrad_0.2Line_100pdi.png'
-saveRoadMap(shp_path, savePath, center,5)
+city='Berlin'
+
+configs=yaml.safe_load(open('Datasets/profile.yml','r'))
+center=configs[city]['center']
+shp_path =configs[city]['shp_path']
+savePath=configs[city]['roadmap_path']
+min_MaxSpeed=configs[city]['min_MaxSpeed']
+# saveRoadMap(shp_path, savePath, center,5)
+print(center,shp_path,savePath,min_MaxSpeed)
+# center = [52.520008,13.404954]
+# shp_path ='./Datasets/CityScaleSimulatorMaps/Berlin/gis_osm_roads_free_1.shp'
+# savePath='./Datasets/CityScaleSimulatorMaps/berlin_5kmrad_0.2Line_100pdi.png'
 
 '''brisbane'''
 # center = [-27.470125, 153.021072]
-# shp_path ='./data/Geospatial/Brisbane/gis_osm_roads_free_1.shp' 
+# shp_path ='./data/Geospatial/Brisbane/gis_osm_roads_free_1.shp'
 # savePath='./results/TestEnvironmentFiles/TestingMaps/brisbane_5kmrad_1Line_300pdi.png'
 # saveRoadMap(shp_path, savePath, center,5)
 
 '''japan'''
 # center = [35.652832,139.839478]
-# shp_path ='./data/Geospatial/Kanto/gis_osm_roads_free_1.shp' 
+# shp_path ='./data/Geospatial/Kanto/gis_osm_roads_free_1.shp'
 # savePath='./results/TestEnvironmentFiles/TestingMaps/japan_5kmrad_1Line_300pdi.png'
 # saveRoadMap(shp_path, savePath, center,5)
 
 '''newyork'''
 # center = [40.730610, -73.935242]
-# shp_path ='./data/Geospatial/NewYork/gis_osm_roads_free_1.shp' 
+# shp_path ='./data/Geospatial/NewYork/gis_osm_roads_free_1.shp'
 # savePath='./results/TestEnvironmentFiles/TestingMaps/newyork_5kmrad_1Line_300dpi.png'
 # saveRoadMap(shp_path, savePath, center,10)
