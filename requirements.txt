@@ -2,11 +2,8 @@ matplotlib
 matplotlib-scalebar
 mpi
 numpy
-opencv
+opencv-python
 pandas
-pip
-py-opencv
-python
 scikit-learn
 scikit-learn-intelex
 scipy
