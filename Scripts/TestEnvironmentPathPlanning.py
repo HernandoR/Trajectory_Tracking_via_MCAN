@@ -162,6 +162,7 @@ def runSimulation(path_x, path_y, path_img):
         plt.title(f"{car.dt*frame:.2f}s", loc="right")
         plt.xlabel(f"Speed: {car.v:.2f} m/s", loc="left")
         # plt.savefig(f'image/visualisation_{frame:03}.png', dpi=300)
+        plt.close()
 
         return (
             car_outline,
@@ -368,6 +369,7 @@ def main():
         prop={"size": 10},
     )
     plt.savefig(f"path_planning_in_{city}.png")
+    plt.close()
 
 
 if __name__ == "__main__":

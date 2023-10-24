@@ -239,14 +239,15 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
             print(f'integ: x,y: {posi_integ_log[i]}')
             print(f'CAN: x,y: {grid_log[i]}')
             print('')
+            
+    x_grid, y_grid=grid_log[:,0], grid_log[:,1]
+    x_integ, y_integ=posi_integ_log[:,0], posi_integ_log[:,1]
+    x_integ_err, y_integ_err=integ_err_log[:,0], integ_err_log[:,1]
 
     if savePath != None:
         savePath=Path(savePath)
         if not savePath.parent.exists():
             savePath.parent.mkdir(parents=True)
-        x_grid, y_grid=grid_log[:,0], grid_log[:,1]
-        x_integ, y_integ=posi_integ_log[:,0], posi_integ_log[:,1]
-        x_integ_err, y_integ_err=integ_err_log[:,0], integ_err_log[:,1]
         np.save(savePath, np.array([x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err]))
         
     

@@ -96,7 +96,7 @@ def runCanAtPath(City, scaleType, traverseInfo_filePart, vel_profile, pathfile, 
 """Running All Paths in a City SingleScale and MultiScale"""
 
 
-def runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=False):
+def runningAllPathsFromCity(City, scaleType, configs, run=False, plotting=False):
     # scaleType = Single or Multi;
     # City = Berlin or Japan or Brisbane or Newyork or Kitti;
     ATE = []
@@ -187,6 +187,7 @@ def runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=False
                 p.parent.mkdir(parents=True)
         plt.savefig(savepath)
         plt.savefig(savepath2)
+        plt.close()
 
 
 """ Multi versus Single over Large Velocity Range"""
@@ -273,7 +274,7 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
                 p.parent.mkdir(parents=True)
         plt.savefig(savepath)
         plt.savefig(savepath2)
-
+        plt.close()
 
 
 """Cumalitive error Distribution Single vs Multi"""
@@ -350,6 +351,7 @@ def CumalativeError_SinglevsMulti(City, index, configs, run=False, plotting=Fals
                 p.parent.mkdir(parents=True)
         plt.savefig(savepath)
         plt.savefig(savepath2)
+        plt.close()
     pass
 
 
@@ -409,6 +411,7 @@ def plotMultiplePathsErrorDistribution(City, configs, run=False, plotting=False)
             
     plt.savefig(savepath)
     plt.savefig(savepath2)
+    plt.close()
 
 
 """ Kitti GT Poses"""
@@ -475,7 +478,7 @@ def plotKittiGT_singlevsMulti(index):
     )
     plt.savefig(f"./Results/Kitti/KittiSinglevsMulti_{index}.png")
     plt.savefig(f"./Results/PaperFigures/2_KittiSinglevsMulti_{index}.pdf")
-
+    plt.close()
 
 
 """Random Data for Ablation"""
@@ -559,6 +562,7 @@ def scaleAblation(
         # ax1.set_xticks(np.arange(len(numScales)), [a for a in numScales],rotation=90)
 
         plt.savefig(plotPath)
+        plt.close()
 
 
 # scaleRatios,numScales=[1, 1.5, 2, 2.5, 3, 3.5, 4],[1,2,3,4,5]
@@ -604,6 +608,7 @@ def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
         ax0.set_ylabel("Velocity")
         ax0.set_xlabel("Time")
         plt.savefig(plotPath)
+        plt.close()
         # plt.show()
 
     if plotting == "Position":
@@ -616,15 +621,14 @@ def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
         ax0.set_ylabel("y[m]")
         ax0.set_xlabel("x[m]")
         plt.savefig(plotPath)
+        plt.close()
 
 def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=False):
     scaleType = "Single"
-    if City == 'Kitti':
-        run=True
-    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
+    runningAllPathsFromCity(City, scaleType, configs, run=run, plotting=True)
     print("")
     scaleType = "Multi"
-    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
+    runningAllPathsFromCity(City, scaleType, configs, run=run, plotting=True)
 
     """ Multi versus Single over Large Velocity Range"""
     multiVsSingle(City, index,configs, 500, run=run, plotting=True)

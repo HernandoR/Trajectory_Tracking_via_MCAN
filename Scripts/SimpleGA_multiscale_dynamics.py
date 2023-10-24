@@ -239,6 +239,7 @@ def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
         ax.set_title('1D Network Tuning')
         plt.tight_layout()
         plt.savefig(savePath)
+        plt.close()
         print(data[-1,0,:])
 
     if run2D==True:
@@ -274,6 +275,7 @@ def runGA(run1D=False, run2D=False, plotting1D=False, plotting2D=False):
         ax.set_title('2D Network Tuning')
         plt.tight_layout()
         plt.savefig(savePath)
+        plt.close()
         print(data[-1,0,:])
     
 
@@ -312,6 +314,7 @@ def plotAllGA():
     fig.legend((l1, l2),('1D Network Tuning','2D Network Tuning'),loc='upper center', bbox_to_anchor=(0.5,1.05),ncol=2, columnspacing=5.5)
     plt.savefig('./Results/GA_Results/1D_2D_NetworkTuning.png')
     plt.savefig('./Results/PaperFigures/8_1D_2D_NetworkTuning.pdf')
+    plt.close()
 
 
 if __name__ == '__main__':

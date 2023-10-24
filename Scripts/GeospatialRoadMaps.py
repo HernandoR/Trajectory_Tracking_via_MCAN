@@ -81,6 +81,7 @@ def saveRoadMap(shp_path, savePath, center, n):
     dpi = 300
 
     plt.savefig(savePath, bbox_inches="tight", dpi=dpi)
+    plt.close()
     # plt.show()
 
 
