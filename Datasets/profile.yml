@@ -63,4 +63,4 @@ Cities:
     shp_path: "data/Geospatial/Newyork/gis_osm_roads_free_1.shp"
     roadmap_filepath: "Datasets/CityScaleSimulatorMaps/newyork_5kmrad_1Line_300pdi.png"
     min_MaxSpeed: 10
-    randomPath_filepath: "Datasets/CityScaleSimulatorPaths/Newyork_5kmrad_300pdi_1line.npy"
+    randomPath_filepath: "Datasets/CityScaleSimulatorPaths/newyork_5kmrad_300pdi_1line.npy"
