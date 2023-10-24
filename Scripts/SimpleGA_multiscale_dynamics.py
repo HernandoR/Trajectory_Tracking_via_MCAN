@@ -47,7 +47,7 @@ def attractorGridcell_fitness(vel, angVel, genome):
     iterations=int(genome[4])
 
     prev_weights=np.zeros((N,N))
-    network=attractorNetwork2D(N,N,num_links,excite, activity_mag,inhibit_scale)
+    network=attractorNetwork2D([N,N],num_links,excite, activity_mag,inhibit_scale)
     prev_weights=network.excitations(0,0)
     x,y=0,0
     x_integ, y_integ=[],[]

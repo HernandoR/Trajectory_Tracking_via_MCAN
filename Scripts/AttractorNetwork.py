@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+import numba
 import numpy as np
 import math
 
 
 '''Decoding Pose Helper Fucntions'''
-def activityDecoding(prev_weights,radius,N):
+def activityDecoding(prev_weights: np.ndarray ,radius: int,N:int):
     '''Isolating activity at a radius around the peak to decode position'''
     # if np.argmax(prev_weights)==0:
     #     return 0
@@ -78,7 +79,7 @@ class attractorNetwork1D:
     along with inhitory and excitatory connections to update the weights'''
     def __init__(self, N, num_links, excite_radius, activity_mag,inhibit_scale):
         self.excite_radius=excite_radius
-        self.N=N  
+        self.N=N
         self.num_links=num_links
         self.activity_mag=activity_mag
         self.inhibit_scale=inhibit_scale
@@ -163,11 +164,11 @@ class attractorNetwork1D:
 class attractorNetwork2D:
     '''defines 2D attractor network with N1*N2 neurons, angles associated with each neurons 
     along with inhitory and excitatory connections to update the weights'''
-    def __init__(self, N1, N2, num_links, excite_radius, activity_mag,inhibit_scale):
+    def __init__(self, NeuroShape:list, num_links, excite_radius, activity_mag,inhibit_scale):
+        assert len(NeuroShape)==2, "2D NeuroShape must be a list of length 2"
         self.excite_radius=int(excite_radius)
         self.num_links=int(num_links)
-        self.N1=N1
-        self.N2=N2  
+        self.N=NeuroShape
         self.activity_mag=activity_mag
         self.inhibit_scale=inhibit_scale
 
@@ -177,6 +178,15 @@ class attractorNetwork2D:
         sigma = 1.0
         return np.exp(-( ((x-mx)**2 + (y-my)**2) / ( 2.0 * sigma**2 ) ) )
     
+    def activityDecode(self,radius=5):
+        x_multiscale_grid+=self.activityDecode2D(self.weights,radius=radius,axis=1,N=self.N[0])
+        y_multiscale_grid+=self.activityDecode2D(self.weights,radius=radius,axis=0,N=self.N[1])
+        return x_multiscale_grid,y_multiscale_grid
+    
+    def activityDecode2D(self,weights,radius=5,axis=0,N=100):
+        maxSliceIdx=np.argmax(np.max(weights, axis=axis))
+        weightSlice=weights.take(maxSliceIdx, axis=axis)
+        return activityDecoding(weightSlice,radius,N)
 
     def inhibitions(self,weights):
         ''' constant inhibition scaled by amount of active neurons'''
@@ -188,12 +198,12 @@ class attractorNetwork2D:
         excite_rowvals=[] #wrap around row values 
         excite_colvals=[] #wrap around column values 
         for i in range(-self.excite_radius,self.excite_radius+1):
-            excite_rowvals.append((idx + i) % self.N1)
-            excite_colvals.append((idy + i) % self.N2)
+            excite_rowvals.append((idx + i) % self.N[0])
+            excite_colvals.append((idy + i) % self.N[1])
          
 
         gauss=self.full_weights(self.excite_radius)# 2D gaussian scaled 
-        excite=np.zeros((self.N1,self.N2)) # empty excite array 
+        excite=np.zeros((self.N[0],self.N[1])) # empty excite array 
         for i,r in enumerate(excite_rowvals):
             for j,c in enumerate(excite_colvals):
                 excite[r,c]=gauss[i,j]
@@ -204,12 +214,12 @@ class attractorNetwork2D:
         excite_rowvals=[] #wrap around row values 
         excite_colvals=[] #wrap around column values shifted_col_ids
         for i in range(-self.num_links,self.num_links+1):
-            excite_rowvals.append((idx + i) % self.N1)
-            excite_colvals.append((idy + i) % self.N2)
+            excite_rowvals.append((idx + i) % self.N[0])
+            excite_colvals.append((idy + i) % self.N[1])
          
 
         gauss=self.full_weights(self.num_links)# 2D gaussian scaled 
-        excite=np.zeros((self.N1,self.N2)) # empty excite array 
+        excite=np.zeros((self.N[0],self.N[1])) # empty excite array 
         for i,r in enumerate(excite_rowvals):
             for j,c in enumerate(excite_colvals):
                 excite[r,c]=gauss[i,j]
@@ -221,15 +231,15 @@ class attractorNetwork2D:
         inv_frac_row, inv_frac_col=[1-(delta_row%1),1-(delta_col%1)]
 
         non_zero_weights=np.nonzero(full_shift)
-        shifted_row, shifted_col=np.zeros((self.N1,self.N2)), np.zeros((self.N1,self.N2))
-        shifted_col[non_zero_weights[0],(non_zero_weights[1]+mysign(frac_col))%self.N2]=full_shift[non_zero_weights]
-        shifted_row[(non_zero_weights[0]+mysign(frac_row))%self.N1, non_zero_weights[1]]=full_shift[non_zero_weights]
+        shifted_row, shifted_col=np.zeros((self.N[0],self.N[1])), np.zeros((self.N[0],self.N[1]))
+        shifted_col[non_zero_weights[0],(non_zero_weights[1]+mysign(frac_col))%self.N[1]]=full_shift[non_zero_weights]
+        shifted_row[(non_zero_weights[0]+mysign(frac_row))%self.N[0], non_zero_weights[1]]=full_shift[non_zero_weights]
         
         if frac_row != 0 and frac_col !=0:
-            shifted_rowThencol, shifted_colThenrow=np.zeros((self.N1,self.N2)), np.zeros((self.N1,self.N2))
+            shifted_rowThencol, shifted_colThenrow=np.zeros((self.N[0],self.N[1])), np.zeros((self.N[0],self.N[1]))
             non_zero_col, non_zero_row=np.nonzero(shifted_col), np.nonzero(shifted_row)
-            shifted_colThenrow[(non_zero_col[0]+ mysign(frac_row))%self.N1, non_zero_col[1]]=shifted_col[non_zero_col]
-            shifted_rowThencol[non_zero_row[0], (non_zero_row[1]+ mysign(frac_col))%self.N2]=shifted_row[non_zero_row]
+            shifted_colThenrow[(non_zero_col[0]+ mysign(frac_row))%self.N[0], non_zero_col[1]]=shifted_col[non_zero_col]
+            shifted_rowThencol[non_zero_row[0], (non_zero_row[1]+ mysign(frac_col))%self.N[1]]=shifted_row[non_zero_row]
 
             col=full_shift*inv_frac_col + shifted_col*abs(frac_col)
             colRow=col*inv_frac_row + shifted_colThenrow*abs(frac_row)
@@ -249,41 +259,41 @@ class attractorNetwork2D:
             return full_shift
     
     def fractional_shift(self, M,delta_row,delta_col):
-        M_row, M_col = np.zeros((self.N1, self.N2)), np.zeros((self.N1, self.N2))
+        M_row, M_col = np.zeros((self.N[0], self.N[1])), np.zeros((self.N[0], self.N[1]))
         
         mysign=lambda x: 1 if x > 0 else -1
         whole_shift_row, whole_shift_col = np.floor(delta_row), np.floor(delta_col)
         frac_row, frac_col=delta_row%1,delta_col%1
         inv_frac_row, inv_frac_col=[1-(delta_row%1),1-(delta_col%1)]
 
-        for i in range(self.N1):
-            for j in range(self.N2):
-                # M_row[int((i+whole_shift_row)%self.N1),j]=inv_frac_row*prev_weights[int((i+whole_shift_row)%self.N1),j] + frac_row*prev_weights[int((i+whole_shift_row+mysign(frac_row))%self.N1), j]
-                # M_col[i,int((j+whole_shift_col)%self.N2)]=inv_frac_col*prev_weights[i,int((j+whole_shift_col)%self.N2)] + frac_col*prev_weights[i,int((j+whole_shift_col+mysign(frac_col))%self.N2)]
+        for i in range(self.N[0]):
+            for j in range(self.N[1]):
+                # M_row[int((i+whole_shift_row)%self.N[0]),j]=inv_frac_row*prev_weights[int((i+whole_shift_row)%self.N[0]),j] + frac_row*prev_weights[int((i+whole_shift_row+mysign(frac_row))%self.N[0]), j]
+                # M_col[i,int((j+whole_shift_col)%self.N[1])]=inv_frac_col*prev_weights[i,int((j+whole_shift_col)%self.N[1])] + frac_col*prev_weights[i,int((j+whole_shift_col+mysign(frac_col))%self.N[1])]
                 if frac_row == 0.0:
                     M_row=M
                 elif delta_row>0:
-                    M_row[i,j]=(1-frac_row)*M[i,j] + frac_row*M[int((i-1)%self.N1), j]
+                    M_row[i,j]=(1-frac_row)*M[i,j] + frac_row*M[int((i-1)%self.N[0]), j]
                 else:
-                    M_row[i,j]=(frac_row)*M[i,j] + (1-frac_row)*M[int((i+1)%self.N1), j]
+                    M_row[i,j]=(frac_row)*M[i,j] + (1-frac_row)*M[int((i+1)%self.N[0]), j]
 
                 if frac_col == 0.0:
                     M_col=M
                 elif delta_col>0:    
-                    M_col[i,j]=(1-frac_col)*M[i,j] + frac_col*M[i,int((j-1)%self.N2)]
+                    M_col[i,j]=(1-frac_col)*M[i,j] + frac_col*M[i,int((j-1)%self.N[1])]
                 else:
-                    M_col[i,j]=(frac_col)*M[i,j] + (1-frac_col)*M[i,int((j+1)%self.N2)]
+                    M_col[i,j]=(frac_col)*M[i,j] + (1-frac_col)*M[i,int((j+1)%self.N[1])]
         return (M_row+M_col) /np.linalg.norm((M_row+M_col))
  
     def update_weights_dynamics_row_col(self,prev_weights, delta_row, delta_col):
         non_zero_rows, non_zero_cols=np.nonzero(prev_weights) # indexes of non zero prev_weights
-        prev_max_col,prev_max_row=np.argmax(np.max(prev_weights, axis=0)),np.argmax(np.max(prev_weights, axis=1))
+        # prev_max_col,prev_max_row=np.argmax(np.max(prev_weights, axis=0)),np.argmax(np.max(prev_weights, axis=1))
 
         func = lambda x: int(math.ceil(x)) if x < 0 else int(math.floor(x))
 
         '''copied and shifted activity'''
-        full_shift=np.zeros((self.N1,self.N2))
-        shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N1, (non_zero_cols+ func(delta_col))%self.N2
+        full_shift=np.zeros((self.N[0],self.N[1]))
+        shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N[0], (non_zero_cols+ func(delta_col))%self.N[1]
         full_shift[shifted_row_ids, shifted_col_ids]=prev_weights[non_zero_rows, non_zero_cols]
         copy_shift=self.fractional_shift(full_shift,delta_row,delta_col)*self.activity_mag
 
@@ -292,7 +302,7 @@ class attractorNetwork2D:
         copyPaste=copy_shift
         non_zero_copyPaste=np.nonzero(copyPaste)  
         # print(len(non_zero_copyPaste[0]))
-        excited=np.zeros((self.N1,self.N2))
+        excited=np.zeros((self.N[0],self.N[1]))
         # t=time.time()
         for row, col in zip(non_zero_copyPaste[0], non_zero_copyPaste[1]):
             excited+=self.excitations(row,col,copyPaste[row,col])
@@ -306,7 +316,7 @@ class attractorNetwork2D:
         non_zero_inhibit=np.nonzero(shift_excite) 
         for row, col in zip(non_zero_inhibit[0], non_zero_inhibit[1]):
             inhibit_val+=shift_excite[row,col]*self.inhibit_scale
-        inhibit_array=np.tile(inhibit_val,(self.N1,self.N2))
+        inhibit_array=np.tile(inhibit_val,(self.N[0],self.N[1]))
 
         '''update activity'''
 
@@ -317,12 +327,13 @@ class attractorNetwork2D:
         
         return prev_weights/np.linalg.norm(prev_weights) if np.sum(prev_weights) > 0 else [np.nan]
     
+    @numba.jit(nopython=False,forceobj=True)
     def update_weights_dynamics(self,prev_weights, direction, speed, moreResults=None):
         non_zero_rows, non_zero_cols=np.nonzero(prev_weights) # indexes of non zero prev_weights
         # maxXPerScale, maxYPerScale=np.argmax(np.max(prev_weights, axis=0)),np.argmax(np.max(prev_weights, axis=1))
         prev_maxXPerScale, prev_maxYPerScale = np.argmax(np.max(prev_weights, axis=1)) , np.argmax(np.max(prev_weights, axis=0))
-        prev_max_col=round(activityDecoding(prev_weights[prev_maxXPerScale, :],5,self.N2),0)
-        prev_max_row=round(activityDecoding(prev_weights[:,prev_maxYPerScale],5,self.N1),0)
+        prev_max_col=round(activityDecoding(prev_weights[prev_maxXPerScale, :],5,self.N[1]),0)
+        prev_max_row=round(activityDecoding(prev_weights[:,prev_maxYPerScale],5,self.N[0]),0)
 
         delta_row=np.round(speed*np.sin(np.deg2rad(direction)),6)
         delta_col=np.round(speed*np.cos(np.deg2rad(direction)),6)
@@ -330,8 +341,8 @@ class attractorNetwork2D:
         func = lambda x: int(math.ceil(x)) if x < 0 else int(math.floor(x))
 
         '''copied and shifted activity'''
-        full_shift=np.zeros((self.N1,self.N2))
-        shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N1, (non_zero_cols+ func(delta_col))%self.N2
+        full_shift=np.zeros((self.N[0],self.N[1]))
+        shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N[0], (non_zero_cols+ func(delta_col))%self.N[1]
         full_shift[shifted_row_ids, shifted_col_ids]=prev_weights[non_zero_rows, non_zero_cols]
         copy_shift=self.fractional_shift(full_shift,delta_row,delta_col)*self.activity_mag
 
@@ -340,7 +351,7 @@ class attractorNetwork2D:
         copyPaste=copy_shift
         non_zero_copyPaste=np.nonzero(copyPaste)  
         # print(len(non_zero_copyPaste[0]))
-        excited=np.zeros((self.N1,self.N2))
+        excited=np.zeros((self.N[0],self.N[1]))
         # t=time.time()
         for row, col in zip(non_zero_copyPaste[0], non_zero_copyPaste[1]):
             excited+=self.excitations(row,col,copyPaste[row,col])
@@ -354,7 +365,7 @@ class attractorNetwork2D:
         non_zero_inhibit=np.nonzero(shift_excite) 
         for row, col in zip(non_zero_inhibit[0], non_zero_inhibit[1]):
             inhibit_val+=shift_excite[row,col]*self.inhibit_scale
-        inhibit_array=np.tile(inhibit_val,(self.N1,self.N2))
+        inhibit_array=np.tile(inhibit_val,(self.N[0],self.N[1]))
 
         '''update activity'''
 
@@ -365,8 +376,8 @@ class attractorNetwork2D:
         '''wrap around'''
         # maxXPerScale, maxYPerScale=np.argmax(np.max(prev_weights, axis=0)),np.argmax(np.max(prev_weights, axis=1))
         maxXPerScale, maxYPerScale = np.argmax(np.max(prev_weights, axis=1)) , np.argmax(np.max(prev_weights, axis=0))
-        max_col=round(activityDecoding(prev_weights[maxXPerScale, :],5,self.N2),0)
-        max_row=round(activityDecoding(prev_weights[:,maxYPerScale],5,self.N1),0)
+        max_col=round(activityDecoding(prev_weights[maxXPerScale, :],5,self.N[1]),0)
+        max_row=round(activityDecoding(prev_weights[:,maxYPerScale],5,self.N[0]),0)
         
         # print(f"col_prev_current {prev_max_col, max_col} row_prev_current {prev_max_row, max_row}")
         wrap_cols=0 

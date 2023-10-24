@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from datetime import datetime
 import math
@@ -58,9 +59,8 @@ class PathFactory:
         print(locations)
 
         paths = []
-        # for i in range(len(locations) - 1):
-        tbar = tqdm(range(len(locations) - 1))
-        tbar.set_description("finding path")
+            
+        tbar = tqdm(range(len(locations) - 1), disable='GITHUB_ACTIONS' in os.environ)
         for i in tbar:
             try:
                 dx = DistanceTransformPlanner(

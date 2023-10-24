@@ -1,4 +1,5 @@
 import math
+import os
 from pathlib import Path
 import numpy as np 
 import time
@@ -19,7 +20,7 @@ from matplotlib.artist import Artist
 from mpl_toolkits.mplot3d import Axes3D 
 
 '''CAN networks'''
-from AttractorNetwork import attractorNetwork1D, attractorNetwork2D, activityDecoding, activityDecodingAngle
+from AttractorNetwork import attractorNetwork1D, attractorNetwork2D,AttractorNetwork, activityDecoding, activityDecodingAngle
 
 import numba
 
@@ -112,38 +113,46 @@ def headDirection(theta_weights, angVel, init_angle,theata_called_iters):
     
     return theta_weights,theata_called_iters
 
-
 def hierarchicalNetwork2DGridNowrapNet(
-    prev_weights, net,N, vel, direction, iterations, wrap_iterations, x_grid_expect, y_grid_expect,scales):
-    '''Select scale and initilise wrap storage'''
+    prev_weights, net:AttractorNetwork,N, vel, direction, iterations, wrap_iterations, x_grid_expect, y_grid_expect,scales):
+    '''
+    Update the selected scale of the network weights based on the given velocity and scales.
+    Args:
+        prev_weights (list): List of previous weights for each scale.
+        net (object): Network object.
+        N (int): Number of neurons in the network.
+        vel (float): Velocity of the object.
+        direction (float): Direction of the object.
+        iterations (int): Number of iterations to update the weights.
+        wrap_iterations (int): Number of iterations to wrap the weights.
+        x_grid_expect (float): Expected x-coordinate of the grid.
+        y_grid_expect (float): Expected y-coordinate of the grid.
+        scales (list): List of scales for the network.z
+
+    Returns:
+        tuple: A tuple containing the updated previous weights, wrap, x_grid_expect, and y_grid_expect.
+    '''
+    # Select scale and initilise wrap storage
     delta = [(vel/scales[i]) for i in range(len(scales))]
     chosen_scale_idx=scale_selection(vel,scales)
     # print(vel, scales, cs_idx)
     wrap_rows=np.zeros((len(scales)))
     wrap_cols=np.zeros((len(scales)))
+    prev_weight=prev_weights[chosen_scale_idx]
 
-    '''Update selected scale'''
+    #Update selected scale
 
     for i in range(iterations):
         prev_weights[chosen_scale_idx][:], wrap_rows_cs, wrap_cols_cs= net.update_weights_dynamics(
             prev_weights[chosen_scale_idx][:],direction, delta[chosen_scale_idx])
         prev_weights[chosen_scale_idx][prev_weights[chosen_scale_idx][:]<0]=0
-        x_grid_expect+=wrap_cols_cs*N*scales[chosen_scale_idx]
-        y_grid_expect+=wrap_rows_cs*N*scales[chosen_scale_idx]
-    
-
-
-    
-        # if np.any(wrap_cols_cs!=0):
-        #     print(f"------------------------------------------------------------------------------------------------------wrap_cols {wrap_cols_cs}, {scales[cs_idx]}")
-        # if np.any(wrap_rows_cs!=0):
-        #     print(f"------------------------------------------------------------------------------------------------------wrap_rows {wrap_rows_cs}, {scales[cs_idx]}")
+        
+        x_grid_expect+=wrap_cols_cs*net.N[0]*scales[chosen_scale_idx]
+        y_grid_expect+=wrap_rows_cs*net.N[1]*scales[chosen_scale_idx]
 
     wrap=0   
     return prev_weights, wrap, x_grid_expect, y_grid_expect
 
-
-# @numba.jit(nopython=False)
 def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, printing=False, N=100, returnTypes=None, genome=None):
     # global theata_called_iters,theta_weights, prev_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
     
@@ -163,108 +172,207 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
         iterations = 3
         wrap_iterations = 2
         # num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=11,8,5.09182735e-01,2.78709739e-04,5,2
-    network=attractorNetwork2D(N,N,num_links,excite, activity_mag,inhibit_scale)
-
+    network=attractorNetwork2D([N,N],num_links,excite, activity_mag,inhibit_scale)
     
-
+    TIMESTEP_LEN=len(vel)
+    
     '''__________________________Storage and initilisation parameters______________________________'''
-    # scales=[0.25,1,4,16]
     theta_weights=np.zeros(360)
     theata_called_iters=0
-    # start_x, start_y=(50*scales[3])+(50*scales[4])+(50*scales[5]),(50*scales[3])+(50*scales[4])+(50*scales[5])
-    wrap_counter=[0,0,0,0,0,0]
-    x_grid_expect, y_grid_expect =0,0
-    q=[0,0,0]
-    # x_integ_err, y_integ_err=[],[]
-    x_grid, y_grid=[0]*len(vel),[0]*len(vel)
-    x_integ, y_integ=[0]*len(vel),[0]*len(vel)
-    x_integ_err, y_integ_err=[0]*len(vel),[0]*len(vel)
-    q_err=[0,0,0]
-
-    '''__________________________Initilising scales in the center and at the edge_____________________________'''
-    prev_weights=[np.zeros((N,N)) for _ in range(len(scales))]
-    for n in range(len(scales)):
-        for m in range(iterations):
-            prev_weights[n]=network.excitations(0,0)
-            prev_weights[n]=network.update_weights_dynamics_row_col(prev_weights[n][:], 0, 0)
-            prev_weights[n][prev_weights[n][:]<0]=0
+    # wrap_counter=[0,0,0,0,0,0]
+    q=np.zeros(3)
+    q_err=np.zeros(3)
+    # grid_expect=np.zeros(2)
+    x_grid_expect, y_grid_expect = 0,0
     
-
-    '''_______________________________Iterating through simulation velocities_______________________________'''
-    # for i in range(1,len(vel)):   
-    tbar=tqdm(range(1,len(vel)))
-    tbar.set_description("CAN")
+    posi_integ_log=np.zeros([TIMESTEP_LEN,2])
+    grid_log=np.zeros([TIMESTEP_LEN,2])
+    integ_err_log=np.zeros([TIMESTEP_LEN,2])
+    
+    '''__________________________Initilising scales in the center and at the edge_____________________________'''
+    init_weights=[np.zeros((N,N)) for _ in range(len(scales))]
+    for n in range(len(scales)):
+        for _ in range(iterations):
+            init_weights[n]=network.excitations(0,0)
+            init_weights[n]=network.update_weights_dynamics_row_col(init_weights[n][:], 0, 0)
+            init_weights[n][init_weights[n][:]<0]=0
+            
+    '''_______________________________Iterating through simulation Timesteps_______________________________'''
+    tbar = tqdm(range(1,TIMESTEP_LEN), disable='GITHUB_ACTIONS' in os.environ)
     for i in tbar:
-        '''Path integration'''
-        q[2]+=angVel[i]
-        q[0],q[1]=q[0]+vel[i]*np.cos(q[2]), q[1]+vel[i]*np.sin(q[2])
-        x_integ[i]=q[0]
-        y_integ[i]=q[1]
-
-        # go through next 15 lines find input
-        # input is the speed with direction as the shifting in the grid
+    # for i in range(1,TIMESTEP_LEN):
+        q+=np.array([vel[i]*np.cos(q[2]), vel[i]*np.sin(q[2]), angVel[i]])
+        
+        posi_integ_log[i]=q[0:2]
         '''Mutliscale CAN update'''
         N_dir=360
         theta_weights,theata_called_iters=headDirection(theta_weights, np.rad2deg(angVel[i]), 0,theata_called_iters)
+        
         direction=activityDecodingAngle(theta_weights,5,N_dir)
-        prev_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(
-            prev_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
-
+        init_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(init_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
+        
+        
         '''1D method for decoding'''
-        maxXPerScale, maxYPerScale = (np.array([np.argmax(np.max(prev_weights[m], axis=1)) for m in range(len(scales))]),
-                                    np.array([np.argmax(np.max(prev_weights[m], axis=0)) for m in range(len(scales))]))
-        decodedXPerScale=[activityDecoding(prev_weights[m][maxXPerScale[m], :],5,N)*scales[m] for m in range(len(scales))]
-        decodedYPerScale=[activityDecoding(prev_weights[m][:,maxYPerScale[m]],5,N)*scales[m] for m in range(len(scales))]
-        x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale), np.sum(decodedYPerScale)
-        # x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale[0:3]+x_grid_expect[3:6]), np.sum(decodedYPerScale[0:3]+y_grid_expect[3:6])
-        x_grid[i]=x_multiscale_grid+x_grid_expect
-        y_grid[i]=y_multiscale_grid+y_grid_expect
 
+        def activityDecode1D(scale,weights,radius=5,N=100):
+            return activityDecoding(weights,radius,N)*scale
+        
+        def activityDecode2D(scale,weights,radius=5,axis=0,N=100):
+            maxSliceIdx=np.argmax(np.max(weights, axis=axis))
+            weightSlice=weights.take(maxSliceIdx, axis=axis)
+            return activityDecoding(weightSlice,radius,N)*scale
+            
+        x_multiscale_grid,y_multiscale_grid=0,0
+        for idx, scale in enumerate(scales):
+            x_multiscale_grid+=activityDecode2D(scale,init_weights[idx],radius=5,axis=1,N=N)
+            y_multiscale_grid+=activityDecode2D(scale,init_weights[idx],radius=5,axis=0,N=N)
+        grid_log[i]=np.array([x_multiscale_grid+x_grid_expect, y_multiscale_grid+y_grid_expect])
+        
         '''Error integrated path'''
-        q_err[2]+=angVel[i]
-        q_err[0],q_err[1]=q_err[0]+vel[i]*np.cos(np.deg2rad(direction)), q_err[1]+vel[i]*np.sin(np.deg2rad(direction))
-        x_integ_err[i]=q_err[0]
-        y_integ_err[i]=q_err[1]
-
+        q_err+=np.array([vel[i]*np.cos(np.deg2rad(direction)), vel[i]*np.sin(np.deg2rad(direction)), angVel[i]])
+        integ_err_log[i]=q_err[0:2]
+        
         if printing==True:
             print(f'dir: {np.rad2deg(q[2])}, {direction}')
             print(f'vel: {vel[i]}')
-            print(f'decoded: {decodedXPerScale}, {decodedYPerScale}')
             print(f'expected: {x_grid_expect}, {y_grid_expect}')
-            print(f'integ: {x_integ[-1]}, {y_integ[-1]}')
-            print(f'CAN: {x_grid[-1]}, {y_grid[-1]}')
+            print(f'integ: x,y: {posi_integ_log[i]}')
+            print(f'CAN: x,y: {grid_log[i]}')
             print('')
 
     if savePath != None:
         savePath=Path(savePath)
         if not savePath.parent.exists():
             savePath.parent.mkdir(parents=True)
+        x_grid, y_grid=grid_log[:,0], grid_log[:,1]
+        x_integ, y_integ=posi_integ_log[:,0], posi_integ_log[:,1]
+        x_integ_err, y_integ_err=integ_err_log[:,0], integ_err_log[:,1]
         np.save(savePath, np.array([x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err]))
+        
     
     print(f'CAN error: {errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)}') 
         
+
+# def depheadDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, printing=False, N=100, returnTypes=None, genome=None):
+#     # global theata_called_iters,theta_weights, prev_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
+    
+#     if genome is not None: 
+#         num_links=int(genome[0]) #int
+#         excite=int(genome[1]) #int
+#         activity_mag=genome[2] #uni
+#         inhibit_scale=genome[3] #uni
+#         iterations=int(genome[4])
+#         wrap_iterations=int(genome[5])
+    
+#     else:
+#         num_links = 10
+#         excite = 2
+#         activity_mag = 1.10262708e-01
+#         inhibit_scale = 6.51431074e-04
+#         iterations = 3
+#         wrap_iterations = 2
+#         # num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=11,8,5.09182735e-01,2.78709739e-04,5,2
+#     network=attractorNetwork2D([N,N],num_links,excite, activity_mag,inhibit_scale)
+
     
 
-    if returnTypes=='Error':
-        return errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
-    elif returnTypes=='PlotShow':
-        plt.plot(x_integ, y_integ, 'g.')
-        # plt.plot(x_integ_err, y_integ_err, 'y.')
-        plt.plot(x_grid, y_grid, 'b.')
-        plt.axis('equal')
-        plt.title('Test Environment 2D space')
-        plt.legend(('Path Integration without Error','Multiscale Grid Decoding'))
-        plt.show()
-    elif returnTypes=='posInteg+CAN':
-        return x_integ,y_integ, x_grid, y_grid
+#     '''__________________________Storage and initilisation parameters______________________________'''
+#     # scales=[0.25,1,4,16]
+#     theta_weights=np.zeros(360)
+#     theata_called_iters=0
+#     # start_x, start_y=(50*scales[3])+(50*scales[4])+(50*scales[5]),(50*scales[3])+(50*scales[4])+(50*scales[5])
+#     wrap_counter=[0,0,0,0,0,0]
+#     x_grid_expect, y_grid_expect =0,0
+#     q=[0,0,0]
+#     # x_integ_err, y_integ_err=[],[]
+#     x_grid, y_grid=[0]*len(vel),[0]*len(vel)
+#     x_integ, y_integ=[0]*len(vel),[0]*len(vel)
+#     x_integ_err, y_integ_err=[0]*len(vel),[0]*len(vel)
+#     q_err=[0,0,0]
+
+#     '''__________________________Initilising scales in the center and at the edge_____________________________'''
+#     prev_weights=[np.zeros((N,N)) for _ in range(len(scales))]
+#     for n in range(len(scales)):
+#         for m in range(iterations):
+#             prev_weights[n]=network.excitations(0,0)
+#             prev_weights[n]=network.update_weights_dynamics_row_col(prev_weights[n][:], 0, 0)
+#             prev_weights[n][prev_weights[n][:]<0]=0
+    
+
+#     '''_______________________________Iterating through simulation velocities_______________________________'''
+#     for i in range(1,len(vel)):   
+#     # tbar=tqdm(range(1,len(vel)), disable='GITHUB_ACTIONS' in os.environ)
+#     # for i in tbar:
+#         '''Path integration'''
+#         q[2]+=angVel[i]
+#         q[0],q[1]=q[0]+vel[i]*np.cos(q[2]), q[1]+vel[i]*np.sin(q[2])
+#         x_integ[i]=q[0]
+#         y_integ[i]=q[1]
+
+#         # go through next 15 lines find input
+#         # input is the speed with direction as the shifting in the grid
+#         '''Mutliscale CAN update'''
+#         N_dir=360
+#         theta_weights,theata_called_iters=headDirection(theta_weights, np.rad2deg(angVel[i]), 0,theata_called_iters)
+#         direction=activityDecodingAngle(theta_weights,5,N_dir)
+#         prev_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(
+#             prev_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
+
+#         '''1D method for decoding'''
+#         maxXPerScale, maxYPerScale = (np.array([np.argmax(np.max(prev_weights[m], axis=1)) for m in range(len(scales))]),
+#                                     np.array([np.argmax(np.max(prev_weights[m], axis=0)) for m in range(len(scales))]))
+#         decodedXPerScale=[activityDecoding(prev_weights[m][maxXPerScale[m], :],5,N)*scales[m] for m in range(len(scales))]
+#         decodedYPerScale=[activityDecoding(prev_weights[m][:,maxYPerScale[m]],5,N)*scales[m] for m in range(len(scales))]
+#         x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale), np.sum(decodedYPerScale)
+#         # x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale[0:3]+x_grid_expect[3:6]), np.sum(decodedYPerScale[0:3]+y_grid_expect[3:6])
+#         x_grid[i]=x_multiscale_grid+x_grid_expect
+#         y_grid[i]=y_multiscale_grid+y_grid_expect
+
+#         '''Error integrated path'''
+#         q_err[2]+=angVel[i]
+#         q_err[0],q_err[1]=q_err[0]+vel[i]*np.cos(np.deg2rad(direction)), q_err[1]+vel[i]*np.sin(np.deg2rad(direction))
+#         x_integ_err[i]=q_err[0]
+#         y_integ_err[i]=q_err[1]
+
+#         if printing==True:
+#             print(f'dir: {np.rad2deg(q[2])}, {direction}')
+#             print(f'vel: {vel[i]}')
+#             print(f'decoded: {decodedXPerScale}, {decodedYPerScale}')
+#             print(f'expected: {x_grid_expect}, {y_grid_expect}')
+#             print(f'integ: {x_integ[-1]}, {y_integ[-1]}')
+#             print(f'CAN: {x_grid[-1]}, {y_grid[-1]}')
+#             print('')
+
+#     if savePath != None:
+#         savePath=Path(savePath)
+#         if not savePath.parent.exists():
+#             savePath.parent.mkdir(parents=True)
+#         np.save(savePath, np.array([x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err]))
+    
+#     print(f'CAN error: {errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)}') 
+        
+    
+
+#     if returnTypes=='Error':
+#         return errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
+#     elif returnTypes=='PlotShow':
+#         plt.plot(x_integ, y_integ, 'g.')
+#         # plt.plot(x_integ_err, y_integ_err, 'y.')
+#         plt.plot(x_grid, y_grid, 'b.')
+#         plt.axis('equal')
+#         plt.title('Test Environment 2D space')
+#         plt.legend(('Path Integration without Error','Multiscale Grid Decoding'))
+#         plt.show()
+#     elif returnTypes=='posInteg+CAN':
+#         return x_integ,y_integ, x_grid, y_grid
 
 
 def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,savePath, plot=False, printing=True, N=100):
-    global theata_called_iters,theta_weights, prev_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
+    global theata_called_iters,theta_weights, init_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
 
     num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=10,2,1.10262708e-01,6.51431074e-04,3,2 #with decimals 200 iters fitness -395 modified
     num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=10,10,1,0.0008,2,1
-    network=attractorNetwork2D(N,N,num_links,excite, activity_mag,inhibit_scale)
+    network=attractorNetwork2D([N,N],num_links,excite, activity_mag,inhibit_scale)
 
     
 
@@ -282,18 +390,18 @@ def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,saveP
     q_err=[0,0,0]
 
     '''__________________________Initilising scales in the center and at the edge_____________________________'''
-    prev_weights=[np.zeros((N,N)) for _ in range(len(scales))]
+    init_weights=[np.zeros((N,N)) for _ in range(len(scales))]
     for n in range(len(scales)):
         for m in range(iterations):
-            prev_weights[n]=network.excitations(0,0)
-            prev_weights[n]=network.update_weights_dynamics_row_col(prev_weights[n][:], 0, 0)
-            prev_weights[n][prev_weights[n][:]<0]=0
+            init_weights[n]=network.excitations(0,0)
+            init_weights[n]=network.update_weights_dynamics_row_col(init_weights[n][:], 0, 0)
+            init_weights[n][init_weights[n][:]<0]=0
     
 
     '''_______________________________Iterating through simulation velocities_______________________________'''
     fig, axs = plt.subplots(1,4,figsize=(5, 3)) 
     def animate(i):  
-        global theata_called_iters,theta_weights, prev_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
+        global theata_called_iters,theta_weights, init_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
 
         '''Path integration'''
         q[2]+=angVel[i]
@@ -306,12 +414,12 @@ def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,saveP
         N_dir=360
         theta_weights,theata_called_iters=headDirection(theta_weights, np.rad2deg(angVel[i]), 0,theata_called_iters)
         direction=activityDecodingAngle(theta_weights,5,N_dir)
-        prev_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(prev_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
+        init_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(init_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
 
         '''1D method for decoding'''
-        maxXPerScale, maxYPerScale = np.array([np.argmax(np.max(prev_weights[m], axis=1)) for m in range(len(scales))]), np.array([np.argmax(np.max(prev_weights[m], axis=0)) for m in range(len(scales))])
-        decodedXPerScale=[activityDecoding(prev_weights[m][maxXPerScale[m], :],5,N)*scales[m] for m in range(len(scales))]
-        decodedYPerScale=[activityDecoding(prev_weights[m][:,maxYPerScale[m]],5,N)*scales[m] for m in range(len(scales))]
+        maxXPerScale, maxYPerScale = np.array([np.argmax(np.max(init_weights[m], axis=1)) for m in range(len(scales))]), np.array([np.argmax(np.max(init_weights[m], axis=0)) for m in range(len(scales))])
+        decodedXPerScale=[activityDecoding(init_weights[m][maxXPerScale[m], :],5,N)*scales[m] for m in range(len(scales))]
+        decodedYPerScale=[activityDecoding(init_weights[m][:,maxYPerScale[m]],5,N)*scales[m] for m in range(len(scales))]
         x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale), np.sum(decodedYPerScale)
         # x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale[0:3]+x_grid_expect[3:6]), np.sum(decodedYPerScale[0:3]+y_grid_expect[3:6])
         x_grid.append(x_multiscale_grid+x_grid_expect)
@@ -334,7 +442,7 @@ def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,saveP
 
         for k in range(4):
             axs[k].clear()
-            axs[k].imshow(prev_weights[k][:][:], cmap='jet')#(np.arange(N),prev_weights[k][:],color=colors[k])
+            axs[k].imshow(init_weights[k][:][:], cmap='jet')#(np.arange(N),prev_weights[k][:],color=colors[k])
             axs[k].spines[['top', 'left', 'right']].set_visible(False)
             axs[k].invert_yaxis()
 

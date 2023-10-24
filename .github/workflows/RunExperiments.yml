@@ -7,7 +7,8 @@ on:
   push:
     branches: [ "improving" ]
   workflow_dispatch:
-
+env:
+  'GITHUB_ACTIONS': True
 permissions:
   contents: read
 
@@ -30,6 +31,7 @@ jobs:
       run: echo 'A cache has been found'
 
     - name: Install dependencies
+
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest

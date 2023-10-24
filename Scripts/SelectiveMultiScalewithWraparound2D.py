@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from tqdm import tqdm
 
@@ -27,7 +28,8 @@ sys.path.append("./scripts")
 plt.style.use(["science", "ieee"])
 # plt.style.use(['science','no-latex'])
 
-
+configs = yaml.load(open("Datasets/profile.yml", "r"), Loader=yaml.FullLoader)
+configs = configs["SelectiveMultiScale"]
 
 
 def load_traverse_info(traverseInfo_filePart, index):
@@ -51,6 +53,45 @@ def parseVelType(vel_profile):
         veltype = vel_profile
     return veltype
 
+
+def runCanAtPath(City, scaleType, traverseInfo_filePart, vel_profile, pathfile, index):
+    """running a single path in a city
+    City = Berlin or Japan or Brisbane or Newyork or Kitti;
+    scaleType = Single or Multi;
+    traverseInfo_filePart = the file path to the traverse info, will append the index to the end;
+    vel_profile = either a list or a string
+    pathfile = the file path to save the output
+    index = the index of the path
+    """
+    vel, angVel = load_traverse_info(traverseInfo_filePart, index)
+
+    if scaleType == "Multi":
+        scales = [0.25, 1, 4, 16]
+        numNeurons = 100
+    elif scaleType == "Single":
+        scales = [1]
+        numNeurons = 200
+        
+    if City == "Kitti":
+        test_length = len(vel)
+    else:
+        test_length = min(len(vel), 1000)  # supress for testing
+
+    if type(vel_profile) == list:
+                # use a random seed to generate the velocities for reproducibility
+        vel_min,vel_max,vel_var = vel_profile
+        np.random.seed(index * vel_var)
+        vel = np.random.uniform(vel_min, vel_max, test_length)
+                
+    CAN.headDirectionAndPlaceNoWrapNet(
+                scales,
+                vel[:test_length],
+                angVel,
+                f"{pathfile}{index}.npy",
+                N=numNeurons,
+                printing=False,
+            )
+    print(f"finished {City}, id {index}")
     
 """Running All Paths in a City SingleScale and MultiScale"""
 
@@ -60,34 +101,6 @@ def runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=False
     # City = Berlin or Japan or Brisbane or Newyork or Kitti;
     ATE = []
 
-    def runCanAtPath(City, scaleType, traverseInfo_filePart, vel_profile, pathfile, index):
-        vel, angVel = load_traverse_info(traverseInfo_filePart, index)
-
-        if scaleType == "Multi":
-            scales = [0.25, 1, 4, 16]
-            numNeurons = 100
-        elif scaleType == "Single":
-            scales = [1]
-            numNeurons = 200
-
-        test_length = min(len(vel), 1000)  # supress for testing
-
-        if type(vel_profile) == list:
-                    # use a random seed to generate the velocities for reproducibility
-            vel_min,vel_max,vel_var = vel_profile
-            np.random.seed(index * vel_var)
-            vel = np.random.uniform(vel_min, vel_max, test_length)
-                    
-        CAN.headDirectionAndPlaceNoWrapNet(
-                    scales,
-                    vel[:test_length],
-                    angVel,
-                    f"{pathfile}{index}.npy",
-                    N=numNeurons,
-                    printing=False,
-                )
-        print(f"finished {City}, id {index}")
-        
     length = configs[City]["length"]
     traverseInfo_filePart = configs[City]["traverseInfo_file"]
     figrows, figcols = configs[City]["figshape"]
@@ -96,10 +109,10 @@ def runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=False
     pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswith{veltype}_Path"
     savepath = f"./Results/{City}/TestingTrackswith{veltype}_{scaleType}scale.png"
     savepath2 = f"./Results/PaperFigures/5_{City}TestingTrackswith{veltype}_{scaleType}scale.pdf"
-
+    
     if run == True:
         # for index in range(length):
-        tbar = tqdm(range(length))
+        tbar = tqdm(range(length), disable='GITHUB_ACTIONS' in os.environ)
         tbar.set_description(f"Running {City} {scaleType}scale")
         for index in tbar:
             runCanAtPath(City, scaleType, traverseInfo_filePart, vel_profile, pathfile, index)
@@ -179,15 +192,34 @@ def runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=False
 """ Multi versus Single over Large Velocity Range"""
 
 
-def multiVsSingle(City, index, configs,desiredTestLength=500, run=False, plotting=False):
-    traverseInfo_filePart=configs[City]["traverseInfo_file"]
+def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotting=False):
+    """
+    This function compares the performance of a single-scale and multiscale network for a given city and path index.
+    
+    Args:
+    - City (str): the name of the city
+    - index (int): the index of the path
+    - configs (dict): a dictionary containing the configuration information for each city
+    - desiredTestLength (int): the desired length of the test trajectory
+    - run (bool): whether to run the function or not
+    - plotting (bool): whether to plot the results or not
+    
+    Returns:
+    - None
+    
+    Saves:
+    - A numpy array containing the errors for each trajectory
+    - A plot of the errors for each trajectory
+    """
+    
+    traverseInfo_filePart = configs[City]["traverseInfo_file"]
     vel, angVel = load_traverse_info(traverseInfo_filePart, index)
     
     test_length = min(len(vel), desiredTestLength)  # supress for testing
     filepath = f"./Results/{City}/MultivsSingleErrors_Path{index}.npy"
     
-    savepath= f"./Results/{City}/MultivsSingleErrors_Path{index}.png"
-    savepath2=f"./Results/PaperFigures/3_MultivsSingleErrors_Path{index}.pdf"
+    savepath = f"./Results/{City}/MultivsSingleErrors_Path{index}.png"
+    savepath2 = f"./Results/PaperFigures/3_MultivsSingleErrors_Path{index}.pdf"
     
     if run == True:
         errors = []
@@ -210,6 +242,7 @@ def multiVsSingle(City, index, configs,desiredTestLength=500, run=False, plottin
             errors.append([singleError, multipleError])
 
         np.save(filepath, errors)
+        
     if plotting == True:
         if not Path(filepath).exists():
             multiVsSingle(City, index, configs,desiredTestLength=desiredTestLength, run=True, plotting=False)
@@ -323,11 +356,6 @@ def CumalativeError_SinglevsMulti(City, index, configs, run=False, plotting=Fals
 
 """Local Error segments Berlin"""
 
-
-# def plotMultiplePathsErrorDistribution():
-#     length = 18
-#     pathfileSingle = f"./Results/Berlin/CAN_Experiment_Output_Single/TestingTrackswithSpeeds0to20_Path"
-#     pathfileMulti = f"./Results/Berlin/CAN_Experiment_Output_Multi/TestingTrackswithSpeeds0to20_Path"
 def plotMultiplePathsErrorDistribution(City, configs, run=False, plotting=False):
     length = configs[City]["length"]
     
@@ -383,30 +411,6 @@ def plotMultiplePathsErrorDistribution(City, configs, run=False, plotting=False)
     plt.savefig(savepath2)
 
 
-
-"""Running All Paths in a City SingleScale and MultiScale"""
-configs = yaml.load(open("Datasets/profile.yml", "r"), Loader=yaml.FullLoader)
-configs = configs["SelectiveMultiScale"]
-
-
-
-def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=False):
-    scaleType = "Single"
-    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
-    print("")
-    scaleType = "Multi"
-    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
-
-    """ Multi versus Single over Large Velocity Range"""
-    multiVsSingle(City, index,configs, 500, run=run, plotting=True)
-    CumalativeError_SinglevsMulti(City, index, configs, run=run, plotting=True)
-    plotMultiplePathsErrorDistribution(City, configs, run=run, plotting=True)
-
-for City in ['Newyork', 'Brisbane', 'Berlin', 'Japan', 'Kitti']:
-    exp_on_city(City=City, index=0, configs=configs,run=True, plotting=True)
-# exp_on_city(City='Kitti', index=0, configs=configs,run=True, plotting=False)
-
-
 """ Kitti GT Poses"""
 
 
@@ -438,12 +442,6 @@ def data_processing(index):
         f"./Datasets/kittiVelocities/kittiVels_{index}.npy", np.array([delta1, delta2])
     )
 
-
-# for i in range(10):
-#     data_processing(f'0{i}')
-# data_processing('10')
-
-# TODO Merge with Cities
 def plotKittiGT_singlevsMulti(index):
     multiPath = f"./Results/Kitti/CAN_Experiment_Output_Multi/TestingTrackswithGTpose_path{index}.npy"
     singlePath = f"./Results/Kitti/CAN_Experiment_Output_Single/TestingTrackswithGTpose_path{index}.npy"
@@ -478,38 +476,6 @@ def plotKittiGT_singlevsMulti(index):
     plt.savefig(f"./Results/Kitti/KittiSinglevsMulti_{index}.png")
     plt.savefig(f"./Results/PaperFigures/2_KittiSinglevsMulti_{index}.pdf")
 
-
-# plotKittiGT_singlevsMulti(0)
-City = "Kitti"
-scaleType = "Single"
-# runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=True)
-
-# # runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-# # runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=True)
-# # runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
-# # runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
-# # runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
-# print("")
-# scaleType = "Multi"
-# runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=True)
-# # runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-# # runningAllPathsFromACity(City, scaleType, configs, run=True, plotting=True)
-# # runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
-# # runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
-# # runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
-
-# """ Multi versus Single over Large Velocity Range"""
-
-# # index = 0
-# # filepath = f"./Results/Berlin/MultivsSingleErrors_Path{index}.npy"
-# # mutliVs_single(filepath, index, 500, run=False, plotting=True)
-# multiVsSingle(City, 0,configs, 500, run=False, plotting=True)
-
-# # singlePath = "./Results/Berlin/CumalativeError_Path1_SingleScale.npy"
-# # multiPath = "./Results/Berlin/CumalativeError_Path1_MultiScale.npy"
-# # CumalativeError_SinglevsMulti(singlePath, multiPath, run=False, plotting=True)
-# CumalativeError_SinglevsMulti(City, 0, configs, run=False, plotting=True)
-# plotMultiplePathsErrorDistribution(City, configs, run=False, plotting=True)
 
 
 """Random Data for Ablation"""
@@ -651,5 +617,24 @@ def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
         ax0.set_xlabel("x[m]")
         plt.savefig(plotPath)
 
+def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=False):
+    scaleType = "Single"
+    if City == 'Kitti':
+        run=True
+    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
+    print("")
+    scaleType = "Multi"
+    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
 
+    """ Multi versus Single over Large Velocity Range"""
+    multiVsSingle(City, index,configs, 500, run=run, plotting=True)
+    CumalativeError_SinglevsMulti(City, index, configs, run=run, plotting=True)
+    plotMultiplePathsErrorDistribution(City, configs, run=run, plotting=True)
+    
+    if City == 'Kitti':
+        plotKittiGT_singlevsMulti(0)
+
+for City in ['Kitti', 'Newyork', 'Brisbane', 'Berlin', 'Tokyo']:
+    exp_on_city(City=City, index=0, configs=configs,run=False, plotting=True)
+# exp_on_city(City='Kitti', index=0, configs=configs,run=True, plotting=False)
 resposneToVelSpikes(randomSeedVariation=7, run=True, plotting="Position")
