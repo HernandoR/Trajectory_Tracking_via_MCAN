@@ -392,32 +392,13 @@ configs = configs["SelectiveMultiScale"]
 
 def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=False):
     scaleType = "Single"
-    runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=True)
-
-# runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-# runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=True)
-# runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
-# runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
-# runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
+    runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
     print("")
     scaleType = "Multi"
     runningAllPathsFromACity(City, scaleType, configs, run=run, plotting=True)
-# runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-# runningAllPathsFromACity(City, scaleType, configs, run=True, plotting=True)
-# runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
-# runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
-# runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
 
     """ Multi versus Single over Large Velocity Range"""
-
-# index = 0
-# filepath = f"./Results/Berlin/MultivsSingleErrors_Path{index}.npy"
-# mutliVs_single(filepath, index, 500, run=False, plotting=True)
     multiVsSingle(City, index,configs, 500, run=run, plotting=True)
-
-# singlePath = "./Results/Berlin/CumalativeError_Path1_SingleScale.npy"
-# multiPath = "./Results/Berlin/CumalativeError_Path1_MultiScale.npy"
-# CumalativeError_SinglevsMulti(singlePath, multiPath, run=False, plotting=True)
     CumalativeError_SinglevsMulti(City, index, configs, run=run, plotting=True)
     plotMultiplePathsErrorDistribution(City, configs, run=run, plotting=True)
 
