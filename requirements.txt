@@ -1,3 +1,20 @@
+matplotlib=3.6.2
+matplotlib-base=3.6.2
+matplotlib-scalebar=0.8.1
+mpi=1.0
+numpy=1.26.0
+numpy-base=1.26.0
+opencv=4.7.0
+pandas=2.0.3
+pip=23.2.1
+py-opencv=4.7.0
+python=3.11.0
+scikit-learn=1.2.2
+scikit-learn-intelex=2023.1.1
+scipy=1.11.3
+shapely=2.0.1
+tqdm=4.65.0
+pyyaml
 easy_trilateration
 roboticstoolbox-python
 spatialmath-python
@@ -5,4 +22,6 @@ plotnine
 geopandas
 folium
 geopy
--e git+https://github.com/garrettj403/SciencePlots.git#egg=SciencePlots
+pip
+pyyaml
+git+https://github.com/garrettj403/SciencePlots.git#egg=SciencePlots

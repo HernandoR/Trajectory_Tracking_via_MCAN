@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import yaml
 import scienceplots
 import matplotlib.pyplot as plt
 import matplotlib.axes as axes
@@ -18,57 +21,33 @@ import sys
 
 import CAN
 sys.path.append('./scripts')
-# from CAN import CAN.headDirectionAndPlaceNoWrapNet, pathIntegration, CAN.errorTwoCoordinateLists, positionToVel2D
+
 plt.style.use(['science','ieee'])
 # plt.style.use(['science','no-latex'])
 
+configs=yaml.parse(open('Datasets/profile.yml', 'r'))
+configs=configs['SelectiveMultiScale']
 
 
 '''Running All Paths in a City SingleScale and MultiScale'''
-def runningAllPathsFromACity(City, scaleType, run=False, plotting=False): 
+def runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=False): 
     #scaleType = Single or Multi; 
-    #City = Berlin or Japan or Brisbane or NewYork;
+    #City = Berlin or Japan or Brisbane or Newyork;
     ATE=[]
-    if City=='Berlin':
-        length=18
-        outfilePart='./Datasets/CityScaleSimulatorVelocities/Berlin/BerlineEnvPath'
-        pathfile=f'./Results/Berlin/CAN_Experiment_Output_{scaleType}/TestingTrackswithSpeeds0to20_Path'
-        savepath=f'./Results/Berlin/TestingTrackswithSpeeds0to20_{scaleType}scale.png'
-        savepath2=f'./Results/PaperFigures/5_BerlinTestingTrackswithSpeeds0to20_{scaleType}scale.pdf'
-        figrows,figcols=6,3
-        randomSeedVariation=1
-
-    elif City=='Japan':
-        length=4
-        outfilePart='./Datasets/CityScaleSimulatorVelocities/Tokyo/Japan'
-        pathfile=f'./Results/Tokyo/CAN_Experiment_Output_{scaleType}/TestingTrackswithSpeeds0to20_Path'
-        savepath=f'./Results/Tokyo/TestingTrackswithSpeeds0to20_{scaleType}scale.png'
-        savepath2=f'./Results/PaperFigures/JapanTestingTrackswithSpeeds0to20_{scaleType}scale.pdf'
-        figrows,figcols=2,2
-        randomSeedVariation=2
-            
-    elif City=='Brisbane':
-        length=7
-        outfilePart='./Datasets/CityScaleSimulatorVelocities/Brisbane/Brisbane'
-        pathfile=f'./Results/Brisbane/CAN_Experiment_Output_{scaleType}/TestingTrackswithSpeeds0to20_Path'
-        savepath=f'./Results/Brisbane/TestingTrackswithSpeeds0to20_{scaleType}scale.png'
-        savepath2=f'./Results/PaperFigures/BrisbaneTestingTrackswithSpeeds0to20_{scaleType}scale.pdf'
-        figrows,figcols=3,3
-        randomSeedVariation=3
-
-    elif City=='NewYork':
-        length=7
-        outfilePart='./Datasets/CityScaleSimulatorVelocities/NewYork/NYC'
-        pathfile=f'./Results/NewYork/CAN_Experiment_Output_{scaleType}/TestingTrackswithSpeeds0to20_Path'
-        savepath=f'./Results/NewYork/TestingTrackswithSpeeds0to20_{scaleType}scale.png'
-        savepath2=f'./Results/PaperFigures/NewYorkTestingTrackswithSpeeds0to20_{scaleType}scale.pdf'
-        figrows,figcols=3,3
-        randomSeedVariation=4
+    
+    length=configs[City]['length']
+    traverseInfo_filePart=configs[City]['traverseInfo_file']
+    figrows,figcols=configs[City]['figshape']
+    randomSeedVariation=configs[City]['randomSeedVariation']
+        
+    pathfile=f'./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswithSpeeds0to20_Path'
+    savepath=f'./Results/{City}/TestingTrackswithSpeeds0to20_{scaleType}scale.png'
+    savepath2=f'./Results/PaperFigures/{City}TestingTrackswithSpeeds0to20_{scaleType}scale.pdf'
 
     if run==True:
         for index in range(length):
-            outfile=outfilePart+f'{index}.npz'
-            traverseInfo=np.load(outfile, allow_pickle=True)
+            traverseInfo_file=traverseInfo_filePart+f'{index}.npz'
+            traverseInfo=np.load(traverseInfo_file, allow_pickle=True)
             vel,angVel,truePos, startPose=traverseInfo['speeds'], traverseInfo['angVel'], traverseInfo['truePos'], traverseInfo['startPose']
 
             if scaleType=='Multi':
@@ -78,10 +57,8 @@ def runningAllPathsFromACity(City, scaleType, run=False, plotting=False):
                 scales=[1]
                 numNeurons=200
 
-            if len(vel)<1000:
-                test_length=len(vel)
-            else:
-                test_length=1000
+            test_length=min(len(vel),1000) # supress for testing
+            
 
             # iterPerScale=int(np.ceil(test_length/4))
             # vel=np.concatenate([np.linspace(0,scales[0]*5,iterPerScale), np.linspace(scales[0]*5,scales[1]*5,iterPerScale), np.linspace(scales[1]*5,scales[2]*5,iterPerScale), np.linspace(scales[2]*5,scales[3]*5,iterPerScale)])
@@ -89,7 +66,6 @@ def runningAllPathsFromACity(City, scaleType, run=False, plotting=False):
             vel=np.random.uniform(0,20,test_length) 
             CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel, pathfile+f'{index}.npy', N=numNeurons,printing=False)
             print(f'finished {City}, id {index}')
-    
     if plotting==True:
         for i in range(length):
             x_grid,y_grid,x_integ, y_integ, x_integ_err, y_integ_err = np.load(pathfile+f'{i}.npy')
@@ -126,6 +102,10 @@ def runningAllPathsFromACity(City, scaleType, run=False, plotting=False):
         # plt.subplots_adjust(bottom=0.1)
         plt.subplots_adjust(top=0.93)
         fig.legend((l1, l2), (f'{scaleType}scale CAN', 'Ground Truth'),loc="upper center", ncol=2, bbox_to_anchor=(0.5,1.0),prop={'size': 10})
+        for p in savepath,savepath2:
+            p=Path(p)
+            if not p.parent.exists():
+                p.parent.mkdir(parents=True)
         plt.savefig(savepath)
         plt.savefig(savepath2)
 
@@ -139,10 +119,7 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
 
     if run==True:
         for index in range(length):
-            if index==10:
-                velFile=f'./Datasets/kittiVelocities/kittiVels_{index}.npy'
-            else: 
-                velFile=f'./Datasets/kittiVelocities/kittiVels_0{index}.npy'
+            velFile = f"./Datasets/kittiVelocities/kittiVels_{index:02d}.npy"
             vel,angVel=np.load(velFile)
 
             if scaleType=='Multi':
@@ -152,10 +129,6 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
                 scales=[1]
                 numNeurons=200
 
-            if len(vel)<1000:
-                test_length=len(vel)
-            else:
-                test_length=1000
             test_length=len(vel)
 
             CAN.headDirectionAndPlaceNoWrapNet(scales, vel, angVel,pathfile+f'{index}.npy', N=numNeurons,printing=False)
@@ -173,10 +146,13 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
 
         orderedErrorIDs=np.argsort(ATE)
         print(orderedErrorIDs)
+        
+        ncol=math.ceil(math.sqrt(length))
+        nrow=math.ceil(length/ncol)
 
-        fig, axs = plt.subplots(4,3,figsize=(4, 4))
+        fig, axs = plt.subplots(ncol,nrow,figsize=(5, 5)) # maybe 4,4
         fig.legend([f'{scaleType}scaleCAN', 'Grid'])
-        fig.tight_layout(pad=1)
+        fig.tight_layout(pad=0.8)
         fig.suptitle(f'{scaleType}scale Trajectory Tracking for KittiGT_poses with CAN')
         axs=axs.ravel()
         for i in range(length):
@@ -202,22 +178,27 @@ def runningAllPathsFromKittiGT(length, scaleType, run=False, plotting=False):
         plt.subplots_adjust(bottom=0.1)
         plt.subplots_adjust(top=0.93)
         fig.legend((l1, l2), (f'{scaleType}scale CAN', 'Ground Truth'),loc="lower center", ncol=2)
+        for p in savepath,savepath2:
+            p=Path(p)
+            if not p.parent.exists():
+                p.parent.mkdir(parents=True)
         plt.savefig(savepath)
         plt.savefig(savepath2)
 
 
 
 
+City='Newyork'
 scaleType='Single'
 # runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-runningAllPathsFromACity('NewYork', scaleType, run=False, plotting=True)
+runningAllPathsFromACity(City, scaleType, configs, run=False, plotting=True)
 # runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
 # runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
 # runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
 print('')
 scaleType='Multi'
 # runningAllPathsFromACity('Japan', scaleType, run=False, plotting=True)
-runningAllPathsFromACity('NewYork', scaleType, run=False, plotting=True)
+runningAllPathsFromACity(City, scaleType, configs, run=True, plotting=True)
 # runningAllPathsFromACity('Brisbane', scaleType,run=False, plotting=True)
 # runningAllPathsFromACity('Berlin', scaleType, run=False, plotting=True)
 # runningAllPathsFromKittiGT(11, scaleType, run=False, plotting=True)
@@ -271,6 +252,7 @@ def mutliVs_single(filepath, index, desiredTestLength, run=False, plotting=False
 
 index=0
 filepath=f'./Results/Berlin/MultivsSingleErrors_Path{index}.npy'
+
 mutliVs_single(filepath, index, 500, run=False, plotting=True) 
 
 
