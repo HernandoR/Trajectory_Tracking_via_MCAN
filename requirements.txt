@@ -2,6 +2,7 @@ matplotlib
 matplotlib-scalebar
 mpi
 numpy
+numba
 opencv-python
 pandas
 scikit-learn
