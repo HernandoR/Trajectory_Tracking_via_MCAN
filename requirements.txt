@@ -1,9 +1,7 @@
 matplotlib
-matplotlib-base
 matplotlib-scalebar
 mpi
 numpy
-numpy-base
 opencv
 pandas
 pip

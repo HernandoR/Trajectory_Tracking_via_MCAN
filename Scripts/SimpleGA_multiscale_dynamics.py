@@ -1,7 +1,6 @@
 import random
 import numpy as np
-from CAN import attractorNetwork2D, attractorNetwork, activityDecoding,activityDecodingAngle,headDirectionAndPlaceNoWrapNet
-import scienceplots
+from CAN import attractorNetwork1D, attractorNetwork2D, activityDecoding, activityDecodingAngle
 import matplotlib.pyplot as plt
 import math
 import time 
@@ -22,7 +21,7 @@ def headDirectionFitness(angVel,genome):
 
 
     theta_weights=np.zeros(N)
-    net=attractorNetwork(N,num_links,excite, activity_mag,inhibit_scale)
+    net=attractorNetwork1D(N,num_links,excite, activity_mag,inhibit_scale)
     theta_weights[net.activation(0)]=net.full_weights(num_links)
 
     output=[0]
