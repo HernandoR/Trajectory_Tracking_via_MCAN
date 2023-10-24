@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -75,7 +76,7 @@ def noVisualizationDrive(path_x, path_y, path_img, outfile: Path, frames=1000):
     )
 
     # for i in range(frames):
-    tbar = tqdm(range(frames), desc=f"simulating output to {outfile.name} ")
+    tbar = tqdm(range(frames), desc=f"simulating output to {outfile.name} ", disable='GITHUB_ACTIONS' in os.environ)
     for i in tbar:
         # Drive and draw car
         if (car.px[car.target_id], car.py[car.target_id]) != (car.px[-1], car.py[-1]):
