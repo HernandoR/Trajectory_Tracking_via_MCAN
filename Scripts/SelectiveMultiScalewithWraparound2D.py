@@ -121,7 +121,7 @@ def runningAllPathsFromCity(City, scaleType, configs, run=False, plotting=False)
             # load ori planned vel and angVel
             vel, angVel = load_traverse_info(traverseInfo_filePart, index)
             if not Path(f"{pathfile}{index}.npy").exists():
-                print(f"{City} {scaleType}scale havent run yet, running...")
+                print(f"{City} {scaleType}scale at {index} havent run yet, running...")
                 runCanAtPath(City, scaleType, traverseInfo_filePart, vel_profile, pathfile, index)
                 
             x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(
@@ -638,7 +638,7 @@ def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=Fal
     if City == 'Kitti':
         plotKittiGT_singlevsMulti(0)
 
-for City in ['Kitti', 'Newyork', 'Brisbane', 'Berlin', 'Tokyo']:
-    exp_on_city(City=City, index=0, configs=configs,run=False, plotting=True)
+for City in ['Newyork','Kitti',  'Brisbane', 'Berlin', 'Tokyo']:
+    exp_on_city(City=City, index=0, configs=configs,run=True, plotting=True)
 # exp_on_city(City='Kitti', index=0, configs=configs,run=True, plotting=False)
 resposneToVelSpikes(randomSeedVariation=7, run=True, plotting="Position")

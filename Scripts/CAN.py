@@ -201,7 +201,9 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
     tbar = tqdm(range(1,TIMESTEP_LEN), disable='GITHUB_ACTIONS' in os.environ)
     for i in tbar:
     # for i in range(1,TIMESTEP_LEN):
-        q+=np.array([vel[i]*np.cos(q[2]), vel[i]*np.sin(q[2]), angVel[i]])
+        # q+=np.array([vel[i]*np.cos(angVel[i]), vel[i]*np.sin(angVel[i]), angVel[i]])
+        q[2]+=angVel[i]
+        q[0],q[1]=q[0]+vel[i]*np.cos(q[2]), q[1]+vel[i]*np.sin(q[2])
         
         posi_integ_log[i]=q[0:2]
         '''Mutliscale CAN update'''
@@ -217,9 +219,15 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
         def activityDecode1D(scale,weights,radius=5,N=100):
             return activityDecoding(weights,radius,N)*scale
         
+        # TODO, Bad Coding
         def activityDecode2D(scale,weights,radius=5,axis=0,N=100):
             maxSliceIdx=np.argmax(np.max(weights, axis=axis))
-            weightSlice=weights.take(maxSliceIdx, axis=axis)
+            
+            # weightSlice=weights.take(maxSliceIdx, axis=axis)
+            if axis==0:
+                weightSlice=weights[:,maxSliceIdx]
+            elif axis==1:
+                weightSlice=weights[maxSliceIdx,:]
             return activityDecoding(weightSlice,radius,N)*scale
             
         x_multiscale_grid,y_multiscale_grid=0,0
@@ -229,7 +237,8 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
         grid_log[i]=np.array([x_multiscale_grid+x_grid_expect, y_multiscale_grid+y_grid_expect])
         
         '''Error integrated path'''
-        q_err+=np.array([vel[i]*np.cos(np.deg2rad(direction)), vel[i]*np.sin(np.deg2rad(direction)), angVel[i]])
+        q_err[2]+=angVel[i]
+        q_err[0],q_err[1]=q_err[0]+vel[i]*np.cos(np.deg2rad(direction)), q_err[1]+vel[i]*np.sin(np.deg2rad(direction))
         integ_err_log[i]=q_err[0:2]
         
         if printing==True:
