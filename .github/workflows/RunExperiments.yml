@@ -37,6 +37,7 @@ jobs:
         
     - name: Run Python script
       run: |
+        python Scripts/TestEnvironmentPathPlanning.py
         python Scripts/SelectiveMultiScalewithWraparound2D.py # Replace with the name of your Python script
       
     - name: Create tar archive
