@@ -17,7 +17,7 @@ SelectiveMultiScale:
   Newyork:
     vel_profile: [0,20,4] # vel_min,vel_max,vel_var
     length: 7
-    traverseInfo_file: './Datasets/CityScaleSimulatorVelocities/Newyork/NYC'
+    traverseInfo_file: './Datasets/CityScaleSimulatorVelocities/NewYork/NYC'
     figshape: [3,3]
   Kitti:
     vel_profile: 'GTpose'
