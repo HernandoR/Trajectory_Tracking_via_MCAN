@@ -250,6 +250,7 @@ def pathIntegration(speed, angVel, startPose):
 def main():
     config = yaml.load(open("./Datasets/profile.yml"), Loader=yaml.FullLoader)
     config = config["Cities"]
+    OW_PLAN = False
     """Initializing Image"""
     testingCity = "Newyork"
     config = config[testingCity]
@@ -267,7 +268,8 @@ def main():
     """Generate Paths"""
     num_locations = 20
     randomPath_filepath = config["randomPath_filepath"]
-    PathFactory.findPathsThroughRandomPoints(roadMap, num_locations, randomPath_filepath)
+    if OW_PLAN or not Path(randomPath_filepath).exists():
+        PathFactory.findPathsThroughRandomPoints(roadMap, num_locations, randomPath_filepath)
 
     """Original"""
     # pathfile='./results/TestEnvironmentFiles/Paths/testEnvPath1_5kmrad_100pdi_0.2line.npy'
