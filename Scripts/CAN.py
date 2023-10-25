@@ -406,7 +406,7 @@ def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,saveP
     
 
     '''_______________________________Iterating through simulation velocities_______________________________'''
-    fig, axs = plt\.subplots(1,4,figsize=(5, 3),dpi=300) 
+    fig, axs = plt.subplots(1,4,figsize=(5, 3),dpi=300) 
     def animate(i):  
         global theata_called_iters,theta_weights, init_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
 

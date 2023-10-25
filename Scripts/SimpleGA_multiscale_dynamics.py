@@ -292,7 +292,7 @@ def plotAllGA():
         mean_2=np.array([np.mean(fit) for fit in data[:,:,-1]])
         std_2=np.array([np.std(fit) for fit in data[:,:,-1]])
 
-    fig, (ax1,ax2) = plt\.subplots(1,2,figsize=(3.6, 2.2),sharey='row',dpi=300)
+    fig, (ax1,ax2) = plt.subplots(1,2,figsize=(3.6, 2.2),sharey='row',dpi=300)
     plt.tight_layout()
     x1 = np.arange(len(mean_1))
     l1,=ax1.plot(x1, mean_1, 'g-')
