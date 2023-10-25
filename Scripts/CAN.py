@@ -141,15 +141,12 @@ def hierarchicalNetwork2DGridNowrapNet(
     prev_weight=prev_weights[chosen_scale_idx]
 
     #Update selected scale
-
     for i in range(iterations):
         prev_weights[chosen_scale_idx][:], wrap_rows_cs, wrap_cols_cs= net.update_weights_dynamics(
             prev_weights[chosen_scale_idx][:],direction, delta[chosen_scale_idx])
         prev_weights[chosen_scale_idx][prev_weights[chosen_scale_idx][:]<0]=0
-        
         x_grid_expect+=wrap_cols_cs*net.N[0]*scales[chosen_scale_idx]
         y_grid_expect+=wrap_rows_cs*net.N[1]*scales[chosen_scale_idx]
-
     wrap=0   
     return prev_weights, wrap, x_grid_expect, y_grid_expect
 
@@ -409,7 +406,7 @@ def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,saveP
     
 
     '''_______________________________Iterating through simulation velocities_______________________________'''
-    fig, axs = plt.subplots(1,4,figsize=(5, 3)) 
+    fig, axs = plt\.subplots(1,4,figsize=(5, 3),dpi=300) 
     def animate(i):  
         global theata_called_iters,theta_weights, init_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
 

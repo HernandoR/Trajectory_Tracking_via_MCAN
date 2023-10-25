@@ -67,7 +67,7 @@ def saveRoadMap(shp_path, savePath, center, n):
     legend_title = "Berlin Road Speeds"
     legend_bbox = (1.25, 0.5)
 
-    f, ax = plt.subplots(1, figsize=(8, 8))
+    f, ax = plt\.subplots(1, figsize=(8, 8),dpi=300)
 
     a = berlin.plot(ax=ax, linewidth=1, color=[colors[d] for d in berlin.maxspeed])
     # a=berlin.plot(ax=ax, linewidth=1, color='k')

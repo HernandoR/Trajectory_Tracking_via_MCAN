@@ -75,7 +75,7 @@ def runCanAtPath(City, scaleType, traverseInfo_filePart, vel_profile, pathfile, 
     if City == "Kitti":
         test_length = len(vel)
     else:
-        test_length = min(len(vel), 1000)  # supress for testing
+        test_length = min(len(vel), 500)  # supress for testing
 
     if type(vel_profile) == list:
                 # use a random seed to generate the velocities for reproducibility
@@ -144,7 +144,7 @@ def runningAllPathsFromCity(City, scaleType, configs, run=False, plotting=False)
         print(f"orderedErrorIDs: {orderedErrorIDs}, ATE: {ATE}")
         
 
-        fig, ax = plt.subplots(figrows, figcols, figsize=(5, 5))
+        fig, ax = plt\.subplots(figrows, figcols, figsize=(5, 5),dpi=300)
         fig.legend([f"{scaleType}scaleCAN", "Grid"])
         fig.tight_layout(pad=0.8)
         # fig.suptitle(f'{scaleType}scale Trajectory Tracking through {City} with CAN')
@@ -248,7 +248,7 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
         if not Path(filepath).exists():
             multiVsSingle(City, index, configs,desiredTestLength=desiredTestLength, run=True, plotting=False)
         # plt.figure(figsize=(2.7,2))
-        fig, ax = plt.subplots(1, 1, figsize=(2.8, 2.2))
+        fig, ax = plt\.subplots(1, 1, figsize=(2.8, 2.2),dpi=300)
         # fig.tight_layout(pad=3)
         singleErrors, multipleErrors = zip(*np.load(filepath, allow_pickle=True))
         ax.plot(np.arange(20), singleErrors, "b")
@@ -288,7 +288,7 @@ def CumalativeError_SinglevsMulti(City, index, configs, run=False, plotting=Fals
     traverseInfo_filePart=configs[City]["traverseInfo_file"]
     vel, angVel = load_traverse_info(traverseInfo_filePart, index)
     
-    test_length = min(len(vel), 1000)  # supress for testing
+    test_length = min(len(vel), 500)  # supress for testing
     
     savepath= f"./Results/{City}/CumalitiveError_SinglevsMulti_Path{index}.png"
     savepath2=f"./Results/PaperFigures/6_CumalitiveError_SinglevsMulti_Path{index}.pdf"
@@ -322,7 +322,7 @@ def CumalativeError_SinglevsMulti(City, index, configs, run=False, plotting=Fals
             np.concatenate([y_integS, [y_integS[-1]]]), 
             x_gridS, y_gridS, errDistri=True
         )
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.6, 2.2))
+        fig, (ax1, ax2) = plt\.subplots(1, 2, figsize=(3.6, 2.2),dpi=300)
         # fig.legend(['MultiscaleCAN', 'Grid'])
         fig.tight_layout()
         # fig.suptitle('ATE Error Over Time',y=1.07)
@@ -370,7 +370,7 @@ def plotMultiplePathsErrorDistribution(City, configs, run=False, plotting=False)
     savepath = f"./Results/{City}/LocalSegmentError_AllPaths_SinglevsMulti.png"
     savepath2 = f"./Results/PaperFigures/7_LocalSegmentError_AllPaths_SinglevsMulti.pdf"
 
-    fig, axs = plt.subplots(1, 1, figsize=(2.7, 1.9))
+    fig, axs = plt\.subplots(1, 1, figsize=(2.7, 1.9),dpi=300)
     errorSingle, erroMulti = [], []
     for i in range(length):
         x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(
@@ -451,7 +451,7 @@ def plotKittiGT_singlevsMulti(index):
     x_gridM, y_gridM, x_integM, y_integM, x_integ_err, y_integ_err = np.load(multiPath)
     x_gridS, y_gridS, x_integS, y_integS, x_integ_err, y_integ_err = np.load(singlePath)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.6, 2.2))
+    fig, (ax1, ax2) = plt\.subplots(1, 2, figsize=(3.6, 2.2),dpi=300)
     # fig.suptitle('Multiscale vs. Single Scale Kitti Odometry Path')
     # plt.subplots_adjust(bottom=0.2)
     (l2,) = ax1.plot(x_gridM, y_gridM, "m-")
@@ -543,7 +543,7 @@ def scaleAblation(
         errors = np.load(savePath1)
         durations = np.load(savePath2)
 
-        fig, ax0 = plt.subplots(figsize=(5, 4), ncols=1)
+        fig, ax0 = plt\.subplots(figsize=(5, 4), ncols=1,dpi=300)
 
         pos = ax0.imshow(errors)
         plt.colorbar(pos, ax=ax0)
@@ -600,7 +600,7 @@ def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
 
     if plotting == "Vel":
         vel, vel_CANoutput = np.load(savePath, allow_pickle=True)
-        fig, ax0 = plt.subplots(figsize=(4, 4), ncols=1)
+        fig, ax0 = plt.subplots(figsize=(4, 4), ncols=1,dpi=300)
         l2 = ax0.plot(vel, "g.-")
         l3 = ax0.plot(vel_CANoutput, "m.-")
         ax0.legend(("Ground Truth", "Multiscale CAN"))
@@ -613,7 +613,7 @@ def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
 
     if plotting == "Position":
         x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(savePath2)
-        fig, ax0 = plt.subplots(figsize=(4, 4), ncols=1)
+        fig, ax0 = plt\.subplots(figsize=(4, 4), ncols=1,dpi=300)
         l2 = ax0.plot(x_integ, y_integ, "g.-")
         l3 = ax0.plot(x_grid, y_grid, "m.-")
         ax0.legend(("Ground Truth", "Multiscale CAN"))
@@ -639,6 +639,6 @@ def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=Fal
         plotKittiGT_singlevsMulti(0)
 
 for City in ['Newyork','Kitti',  'Brisbane', 'Berlin', 'Tokyo']:
-    exp_on_city(City=City, index=0, configs=configs,run=True, plotting=True)
+    exp_on_city(City=City, index=0, configs=configs,run=False , plotting=True)
 # exp_on_city(City='Kitti', index=0, configs=configs,run=True, plotting=False)
 resposneToVelSpikes(randomSeedVariation=7, run=True, plotting="Position")

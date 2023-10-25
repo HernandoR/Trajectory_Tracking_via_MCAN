@@ -178,10 +178,10 @@ class attractorNetwork2D:
         sigma = 1.0
         return np.exp(-( ((x-mx)**2 + (y-my)**2) / ( 2.0 * sigma**2 ) ) )
     
-    def activityDecode(self,radius=5):
-        x_multiscale_grid+=self.activityDecode2D(self.weights,radius=radius,axis=1,N=self.N[0])
-        y_multiscale_grid+=self.activityDecode2D(self.weights,radius=radius,axis=0,N=self.N[1])
-        return x_multiscale_grid,y_multiscale_grid
+    # def activityDecode(self,radius=5):
+    #     x_multiscale_grid+=self.activityDecode2D(self.weights,radius=radius,axis=1,N=self.N[0])
+    #     y_multiscale_grid+=self.activityDecode2D(self.weights,radius=radius,axis=0,N=self.N[1])
+    #     return x_multiscale_grid,y_multiscale_grid
     
     def activityDecode2D(self,weights,radius=5,axis=0,N=100):
         maxSliceIdx=np.argmax(np.max(weights, axis=axis))
@@ -191,7 +191,7 @@ class attractorNetwork2D:
     def inhibitions(self,weights):
         ''' constant inhibition scaled by amount of active neurons'''
         return np.sum(weights[weights>0]*self.inhibit_scale)
-
+    
     def excitations(self,idx,idy,scale=1):
         '''A scaled 2D gaussian with excite radius is created at given neruon position with wraparound '''
         
@@ -257,7 +257,7 @@ class attractorNetwork2D:
         
         else:
             return full_shift
-    
+        
     def fractional_shift(self, M,delta_row,delta_col):
         M_row, M_col = np.zeros((self.N[0], self.N[1])), np.zeros((self.N[0], self.N[1]))
         
@@ -284,7 +284,8 @@ class attractorNetwork2D:
                 else:
                     M_col[i,j]=(frac_col)*M[i,j] + (1-frac_col)*M[i,int((j+1)%self.N[1])]
         return (M_row+M_col) /np.linalg.norm((M_row+M_col))
- 
+    
+    
     def update_weights_dynamics_row_col(self,prev_weights, delta_row, delta_col):
         non_zero_rows, non_zero_cols=np.nonzero(prev_weights) # indexes of non zero prev_weights
         # prev_max_col,prev_max_row=np.argmax(np.max(prev_weights, axis=0)),np.argmax(np.max(prev_weights, axis=1))
@@ -296,6 +297,7 @@ class attractorNetwork2D:
         shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N[0], (non_zero_cols+ func(delta_col))%self.N[1]
         full_shift[shifted_row_ids, shifted_col_ids]=prev_weights[non_zero_rows, non_zero_cols]
         copy_shift=self.fractional_shift(full_shift,delta_row,delta_col)*self.activity_mag
+        
 
 
         '''excitation'''
@@ -327,7 +329,6 @@ class attractorNetwork2D:
         
         return prev_weights/np.linalg.norm(prev_weights) if np.sum(prev_weights) > 0 else [np.nan]
     
-    @numba.jit(nopython=False,forceobj=True)
     def update_weights_dynamics(self,prev_weights, direction, speed, moreResults=None):
         non_zero_rows, non_zero_cols=np.nonzero(prev_weights) # indexes of non zero prev_weights
         # maxXPerScale, maxYPerScale=np.argmax(np.max(prev_weights, axis=0)),np.argmax(np.max(prev_weights, axis=1))
@@ -340,7 +341,9 @@ class attractorNetwork2D:
         
         func = lambda x: int(math.ceil(x)) if x < 0 else int(math.floor(x))
 
+
         '''copied and shifted activity'''
+        
         full_shift=np.zeros((self.N[0],self.N[1]))
         shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N[0], (non_zero_cols+ func(delta_col))%self.N[1]
         full_shift[shifted_row_ids, shifted_col_ids]=prev_weights[non_zero_rows, non_zero_cols]
@@ -359,6 +362,8 @@ class attractorNetwork2D:
         
         # excited=np.sum(excited_array, axis=0)
         # print(np.shape(excited_array), np.shape(excited))
+
+        
         '''inhibitions'''
         inhibit_val=0
         shift_excite=copy_shift+prev_weights+excited
@@ -366,6 +371,7 @@ class attractorNetwork2D:
         for row, col in zip(non_zero_inhibit[0], non_zero_inhibit[1]):
             inhibit_val+=shift_excite[row,col]*self.inhibit_scale
         inhibit_array=np.tile(inhibit_val,(self.N[0],self.N[1]))
+
 
         '''update activity'''
 
@@ -378,6 +384,7 @@ class attractorNetwork2D:
         maxXPerScale, maxYPerScale = np.argmax(np.max(prev_weights, axis=1)) , np.argmax(np.max(prev_weights, axis=0))
         max_col=round(activityDecoding(prev_weights[maxXPerScale, :],5,self.N[1]),0)
         max_row=round(activityDecoding(prev_weights[:,maxYPerScale],5,self.N[0]),0)
+
         
         # print(f"col_prev_current {prev_max_col, max_col} row_prev_current {prev_max_row, max_row}")
         wrap_cols=0 
