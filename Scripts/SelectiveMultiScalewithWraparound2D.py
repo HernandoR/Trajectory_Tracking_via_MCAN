@@ -250,7 +250,7 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
         # plt.figure(figsize=(2.7,2))
         fig, ax = plt.subplots(1, 1, figsize=(2.8, 2.2))
         # fig.tight_layout(pad=3)
-        singleErrors, multipleErrors = zip(*np.load(filepath))
+        singleErrors, multipleErrors = zip(*np.load(filepath, allow_pickle=True))
         ax.plot(np.arange(20), singleErrors, "b")
         ax.plot(np.arange(20), multipleErrors, "m")
         # plt.legend(['Single-scale', 'Multiscale'])
