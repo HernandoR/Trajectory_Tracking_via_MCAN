@@ -25,8 +25,8 @@ import CAN
 
 sys.path.append("./scripts")
 
-plt.style.use(["science", "ieee"])
-# plt.style.use(['science','no-latex'])
+# plt.style.use(["science", "ieee"])
+plt.style.use(['science','no-latex'])
 
 configs = yaml.load(open("Datasets/profile.yml", "r"), Loader=yaml.FullLoader)
 configs = configs["SelectiveMultiScale"]
