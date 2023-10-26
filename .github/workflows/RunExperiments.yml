@@ -5,6 +5,7 @@ name: Run Experiments
 
 on:
   workflow_dispatch:
+  
 env:
   'GITHUB_ACTIONS': True
   'Profile': 'GITHUB_ACTIONS'
