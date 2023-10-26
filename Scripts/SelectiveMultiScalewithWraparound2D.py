@@ -28,9 +28,6 @@ sys.path.append("./scripts")
 # plt.style.use(["science", "ieee"])
 plt.style.use(['science','no-latex'])
 
-configs = yaml.load(open("Datasets/profile.yml", "r"), Loader=yaml.FullLoader)
-configs = configs["SelectiveMultiScale"]
-
 
 def load_traverse_info(traverseInfo_filePart, index):
     if "kitti" in traverseInfo_filePart:
@@ -638,22 +635,3 @@ def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
         plt.savefig(plotPath)
         plt.close()
 
-def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=False):
-    scaleType = "Single"
-    runningAllPathsFromCity(City, scaleType, configs, run=run, plotting=True)
-    print("")
-    scaleType = "Multi"
-    runningAllPathsFromCity(City, scaleType, configs, run=run, plotting=True)
-
-    """ Multi versus Single over Large Velocity Range"""
-    multiVsSingle(City, index,configs, 500, run=True, plotting=True)
-    CumalativeError_SinglevsMulti(City, index, configs, run=run, plotting=True)
-    plotMultiplePathsErrorDistribution(City, configs, run=run, plotting=True)
-    
-    if City == 'Kitti':
-        plotKittiGT_singlevsMulti(0)
-
-for City in ['Newyork','Kitti',  'Brisbane', 'Berlin', 'Tokyo']:
-    exp_on_city(City=City, index=0, configs=configs,run=False , plotting=True)
-# exp_on_city(City='Kitti', index=0, configs=configs,run=True, plotting=False)
-resposneToVelSpikes(randomSeedVariation=7, run=False, plotting="Position")

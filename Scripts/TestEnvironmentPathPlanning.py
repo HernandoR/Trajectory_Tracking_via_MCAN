@@ -249,10 +249,10 @@ def pathIntegration(speed, angVel, startPose):
     return x_integ, y_integ
 
 
-def main():
+def TestPathPlanning(OW_PLAN = False):
     config = yaml.load(open("./Datasets/profile.yml"), Loader=yaml.FullLoader)
     config = config["Cities"]
-    OW_PLAN = False
+    
     """Initializing Image"""
     testingCity = "Newyork"
     config = config[testingCity]
@@ -373,4 +373,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    TestPathPlanning()

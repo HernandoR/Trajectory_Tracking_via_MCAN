@@ -1,12 +1,13 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python application
+name: Run Experiments
 
 on:
   workflow_dispatch:
 env:
   'GITHUB_ACTIONS': True
+  'Profile': 'GITHUB_ACTIONS'
 permissions:
   contents: read
 
@@ -40,8 +41,7 @@ jobs:
         
     - name: Run Python script
       run: |
-        python Scripts/TestEnvironmentPathPlanning.py
-        python Scripts/SelectiveMultiScalewithWraparound2D.py # Replace with the name of your Python script
+        python Scripts/experiment.py
       
     - name: Create tar archive
       run: tar -cvf Result.tar Result/*

@@ -1,0 +1,25 @@
+Experiments:
+  TestPathPlanning:
+    run: false
+    args:
+    kwargs:
+      OW_PLAN: false
+
+  SelectiveMultiScale:
+    run: true
+    args:
+    kwargs:
+      Cities:
+        - 'Newyork'
+        - 'Kitti'
+      index: 0
+      configs_file: "Datasets/profile.yml"
+      run: False 
+      plotting: True
+  resposneToVelSpikes:
+    run: false
+    args:
+    kwargs:
+      randomSeedVariation: 7
+      run: False
+      plotting: "Position"
