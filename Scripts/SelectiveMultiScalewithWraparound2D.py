@@ -217,7 +217,7 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
     vel, angVel = load_traverse_info(traverseInfo_filePart, index)
     
     test_length = min(len(vel), desiredTestLength)  # supress for testing
-    filepath = f"./Results/{City}/MultivsSingleErrors_Path{index}.npy"
+    filepath = f"./Results/{City}/MultivsSingle/MultivsSingleErrors_Path{index}.npy"
     
     savepath = f"./Results/{City}/MultivsSingleErrors_Path{index}.png"
     savepath2 = f"./Results/PaperFigures/3_MultivsSingleErrors_Path{index}.pdf"
@@ -225,34 +225,49 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
     if run == True:
         errors = []
         # what the fuck and why ?
-        for maxSpeed in range(1, 21):
+        # ok, this is to test the perfomance under different MxSpeeds
+        # but it's too slow: a test for 500 time Step will cost appr. 4min for single and 1min for multi
+        # for maxSpeed in range(1, 21):
+        for maxSpeed in np.linspace(1,100,5):
             vel = np.random.uniform(0, maxSpeed, test_length)
             
             true_x, true_y = CAN.pathIntegration(vel, angVel)
+            
+            singlePath=f"./Results/{City}/MultivsSingle/MultivsSingleErrors_Path{index}_{maxSpeed:.2f}_SingleScale.npy"
+            multiPath=f"./Results/{City}/MultivsSingle/MultivsSingleErrors_Path{index}_{maxSpeed:.2f}_MultiScale.npy"
 
             scales = [1]
-            singleError = CAN.headDirectionAndPlaceNoWrapNet(
-                scales, vel, angVel, None, N=200, returnTypes="Error", printing=False
-            )
-
+            if Path(singlePath).exists():
+                x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(singlePath)
+            else:
+                x_integ,y_integ, x_grid, y_grid = CAN.headDirectionAndPlaceNoWrapNet(
+                    scales, vel, angVel, singlePath, N=200, returnTypes="Error", printing=False
+                )
+            singleError=CAN.errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
+            
             scales = [0.25, 1, 4, 16]
-            multipleError = CAN.headDirectionAndPlaceNoWrapNet(
-                scales, vel, angVel, None, returnTypes="Error", printing=False
-            )
+            if Path(multiPath).exists():
+                x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(multiPath)
+            else:
+                x_integ,y_integ, x_grid, y_grid = CAN.headDirectionAndPlaceNoWrapNet(
+                    scales, vel, angVel, multiPath, returnTypes="Error", printing=False
+                )
+            multipleError=CAN.errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
 
-            errors.append([singleError, multipleError])
+            errors.append([maxSpeed, singleError, multipleError])
 
         np.save(filepath, errors)
         
     if plotting == True:
         if not Path(filepath).exists():
+            print(f"{City} {index} havent run yet, running...")
             multiVsSingle(City, index, configs,desiredTestLength=desiredTestLength, run=True, plotting=False)
         # plt.figure(figsize=(2.7,2))
         fig, ax = plt.subplots(1, 1, figsize=(2.8, 2.2),dpi=300)
         # fig.tight_layout(pad=3)
-        singleErrors, multipleErrors = zip(*np.load(filepath, allow_pickle=True))
-        ax.plot(np.arange(20), singleErrors, "b")
-        ax.plot(np.arange(20), multipleErrors, "m")
+        vels, singleErrors, multipleErrors = zip(*np.load(filepath, allow_pickle=True))
+        ax.plot(vels, singleErrors, "b")
+        ax.plot(vels, multipleErrors, "m")
         # plt.legend(['Single-scale', 'Multiscale'])
         ax.set_xlabel("\# Trajectory")
         ax.set_ylabel("ATE [m] ")
@@ -272,9 +287,9 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
             p = Path(p)
             if not p.parent.exists():
                 p.parent.mkdir(parents=True)
-        plt.savefig(savepath)
-        plt.savefig(savepath2)
-        plt.close()
+        fig.savefig(savepath)
+        fig.savefig(savepath2)
+        plt.close(fig)
 
 
 """Cumalitive error Distribution Single vs Multi"""
@@ -631,7 +646,7 @@ def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=Fal
     runningAllPathsFromCity(City, scaleType, configs, run=run, plotting=True)
 
     """ Multi versus Single over Large Velocity Range"""
-    multiVsSingle(City, index,configs, 500, run=run, plotting=True)
+    multiVsSingle(City, index,configs, 500, run=True, plotting=True)
     CumalativeError_SinglevsMulti(City, index, configs, run=run, plotting=True)
     plotMultiplePathsErrorDistribution(City, configs, run=run, plotting=True)
     
@@ -641,4 +656,4 @@ def exp_on_city(City='Newyork', index=0, configs=configs,run=False, plotting=Fal
 for City in ['Newyork','Kitti',  'Brisbane', 'Berlin', 'Tokyo']:
     exp_on_city(City=City, index=0, configs=configs,run=False , plotting=True)
 # exp_on_city(City='Kitti', index=0, configs=configs,run=True, plotting=False)
-resposneToVelSpikes(randomSeedVariation=7, run=True, plotting="Position")
+resposneToVelSpikes(randomSeedVariation=7, run=False, plotting="Position")

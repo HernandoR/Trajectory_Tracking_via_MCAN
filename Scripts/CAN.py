@@ -142,6 +142,8 @@ def hierarchicalNetwork2DGridNowrapNet(
 
     #Update selected scale
     for i in range(iterations):
+        # BUG: each iteration needs ~ 0.1 Sec for a 200*200 net
+        # mainly by this
         prev_weights[chosen_scale_idx][:], wrap_rows_cs, wrap_cols_cs= net.update_weights_dynamics(
             prev_weights[chosen_scale_idx][:],direction, delta[chosen_scale_idx])
         prev_weights[chosen_scale_idx][prev_weights[chosen_scale_idx][:]<0]=0
@@ -151,8 +153,11 @@ def hierarchicalNetwork2DGridNowrapNet(
     return prev_weights, wrap, x_grid_expect, y_grid_expect
 
 def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, printing=False, N=100, returnTypes=None, genome=None):
-    # global theata_called_iters,theta_weights, prev_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
-    
+    if savePath != None:
+        savePath=Path(savePath)
+        if not savePath.parent.exists():
+            savePath.parent.mkdir(parents=True)
+
     if genome is not None: 
         num_links=int(genome[0]) #int
         excite=int(genome[1]) #int
@@ -249,15 +254,24 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
     x_grid, y_grid=grid_log[:,0], grid_log[:,1]
     x_integ, y_integ=posi_integ_log[:,0], posi_integ_log[:,1]
     x_integ_err, y_integ_err=integ_err_log[:,0], integ_err_log[:,1]
-
     if savePath != None:
         savePath=Path(savePath)
-        if not savePath.parent.exists():
-            savePath.parent.mkdir(parents=True)
         np.save(savePath, np.array([x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err]))
         
     
-    print(f'CAN error: {errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)}') 
+    # print(f'CAN error: {errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)}')
+    # if returnTypes=='Error':
+    #     return errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
+    # elif returnTypes=='PlotShow':
+    #     plt.plot(x_integ, y_integ, 'g.')
+    #     # plt.plot(x_integ_err, y_integ_err, 'y.')
+    #     plt.plot(x_grid, y_grid, 'b.')
+    #     plt.axis('equal')
+    #     plt.title('Test Environment 2D space')
+    #     plt.legend(('Path Integration without Error','Multiscale Grid Decoding'))
+    #     plt.show()
+    # elif returnTypes=='posInteg+CAN':
+    return x_integ,y_integ, x_grid, y_grid
         
 
 # def depheadDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, printing=False, N=100, returnTypes=None, genome=None):
