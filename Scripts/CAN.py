@@ -264,7 +264,7 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
     #     return errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
     # elif returnTypes=='PlotShow':
     #     plt.plot(x_integ, y_integ, 'g.')
-    #     # plt.plot(x_integ_err, y_integ_err, 'y.')
+    #     # plt.plot(x_integ_err, y_integ_err, 'y.')····
     #     plt.plot(x_grid, y_grid, 'b.')
     #     plt.axis('equal')
     #     plt.title('Test Environment 2D space')
@@ -273,119 +273,6 @@ def headDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, print
     # elif returnTypes=='posInteg+CAN':
     return x_integ,y_integ, x_grid, y_grid
         
-
-# def depheadDirectionAndPlaceNoWrapNet(scales, vel, angVel,savePath: str|None, printing=False, N=100, returnTypes=None, genome=None):
-#     # global theata_called_iters,theta_weights, prev_weights, q, wrap_counter, current_i, x_grid_expect, y_grid_expect 
-    
-#     if genome is not None: 
-#         num_links=int(genome[0]) #int
-#         excite=int(genome[1]) #int
-#         activity_mag=genome[2] #uni
-#         inhibit_scale=genome[3] #uni
-#         iterations=int(genome[4])
-#         wrap_iterations=int(genome[5])
-    
-#     else:
-#         num_links = 10
-#         excite = 2
-#         activity_mag = 1.10262708e-01
-#         inhibit_scale = 6.51431074e-04
-#         iterations = 3
-#         wrap_iterations = 2
-#         # num_links,excite,activity_mag,inhibit_scale, iterations, wrap_iterations=11,8,5.09182735e-01,2.78709739e-04,5,2
-#     network=attractorNetwork2D([N,N],num_links,excite, activity_mag,inhibit_scale)
-
-    
-
-#     '''__________________________Storage and initilisation parameters______________________________'''
-#     # scales=[0.25,1,4,16]
-#     theta_weights=np.zeros(360)
-#     theata_called_iters=0
-#     # start_x, start_y=(50*scales[3])+(50*scales[4])+(50*scales[5]),(50*scales[3])+(50*scales[4])+(50*scales[5])
-#     wrap_counter=[0,0,0,0,0,0]
-#     x_grid_expect, y_grid_expect =0,0
-#     q=[0,0,0]
-#     # x_integ_err, y_integ_err=[],[]
-#     x_grid, y_grid=[0]*len(vel),[0]*len(vel)
-#     x_integ, y_integ=[0]*len(vel),[0]*len(vel)
-#     x_integ_err, y_integ_err=[0]*len(vel),[0]*len(vel)
-#     q_err=[0,0,0]
-
-#     '''__________________________Initilising scales in the center and at the edge_____________________________'''
-#     prev_weights=[np.zeros((N,N)) for _ in range(len(scales))]
-#     for n in range(len(scales)):
-#         for m in range(iterations):
-#             prev_weights[n]=network.excitations(0,0)
-#             prev_weights[n]=network.update_weights_dynamics_row_col(prev_weights[n][:], 0, 0)
-#             prev_weights[n][prev_weights[n][:]<0]=0
-    
-
-#     '''_______________________________Iterating through simulation velocities_______________________________'''
-#     for i in range(1,len(vel)):   
-#     # tbar=tqdm(range(1,len(vel)), disable='GITHUB_ACTIONS' in os.environ)
-#     # for i in tbar:
-#         '''Path integration'''
-#         q[2]+=angVel[i]
-#         q[0],q[1]=q[0]+vel[i]*np.cos(q[2]), q[1]+vel[i]*np.sin(q[2])
-#         x_integ[i]=q[0]
-#         y_integ[i]=q[1]
-
-#         # go through next 15 lines find input
-#         # input is the speed with direction as the shifting in the grid
-#         '''Mutliscale CAN update'''
-#         N_dir=360
-#         theta_weights,theata_called_iters=headDirection(theta_weights, np.rad2deg(angVel[i]), 0,theata_called_iters)
-#         direction=activityDecodingAngle(theta_weights,5,N_dir)
-#         prev_weights, wrap, x_grid_expect, y_grid_expect= hierarchicalNetwork2DGridNowrapNet(
-#             prev_weights, network, N, vel[i], direction, iterations,wrap_iterations, x_grid_expect, y_grid_expect, scales)
-
-#         '''1D method for decoding'''
-#         maxXPerScale, maxYPerScale = (np.array([np.argmax(np.max(prev_weights[m], axis=1)) for m in range(len(scales))]),
-#                                     np.array([np.argmax(np.max(prev_weights[m], axis=0)) for m in range(len(scales))]))
-#         decodedXPerScale=[activityDecoding(prev_weights[m][maxXPerScale[m], :],5,N)*scales[m] for m in range(len(scales))]
-#         decodedYPerScale=[activityDecoding(prev_weights[m][:,maxYPerScale[m]],5,N)*scales[m] for m in range(len(scales))]
-#         x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale), np.sum(decodedYPerScale)
-#         # x_multiscale_grid, y_multiscale_grid=np.sum(decodedXPerScale[0:3]+x_grid_expect[3:6]), np.sum(decodedYPerScale[0:3]+y_grid_expect[3:6])
-#         x_grid[i]=x_multiscale_grid+x_grid_expect
-#         y_grid[i]=y_multiscale_grid+y_grid_expect
-
-#         '''Error integrated path'''
-#         q_err[2]+=angVel[i]
-#         q_err[0],q_err[1]=q_err[0]+vel[i]*np.cos(np.deg2rad(direction)), q_err[1]+vel[i]*np.sin(np.deg2rad(direction))
-#         x_integ_err[i]=q_err[0]
-#         y_integ_err[i]=q_err[1]
-
-#         if printing==True:
-#             print(f'dir: {np.rad2deg(q[2])}, {direction}')
-#             print(f'vel: {vel[i]}')
-#             print(f'decoded: {decodedXPerScale}, {decodedYPerScale}')
-#             print(f'expected: {x_grid_expect}, {y_grid_expect}')
-#             print(f'integ: {x_integ[-1]}, {y_integ[-1]}')
-#             print(f'CAN: {x_grid[-1]}, {y_grid[-1]}')
-#             print('')
-
-#     if savePath != None:
-#         savePath=Path(savePath)
-#         if not savePath.parent.exists():
-#             savePath.parent.mkdir(parents=True)
-#         np.save(savePath, np.array([x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err]))
-    
-#     print(f'CAN error: {errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)}') 
-        
-    
-
-#     if returnTypes=='Error':
-#         return errorTwoCoordinateLists(x_integ,y_integ, x_grid, y_grid)
-#     elif returnTypes=='PlotShow':
-#         plt.plot(x_integ, y_integ, 'g.')
-#         # plt.plot(x_integ_err, y_integ_err, 'y.')
-#         plt.plot(x_grid, y_grid, 'b.')
-#         plt.axis('equal')
-#         plt.title('Test Environment 2D space')
-#         plt.legend(('Path Integration without Error','Multiscale Grid Decoding'))
-#         plt.show()
-#     elif returnTypes=='posInteg+CAN':
-#         return x_integ,y_integ, x_grid, y_grid
 
 
 def headDirectionAndPlaceNoWrapNetAnimate(scales, test_length, vel, angVel,savePath, plot=False, printing=True, N=100):
