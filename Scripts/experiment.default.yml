@@ -10,8 +10,11 @@ Experiments:
     args:
     kwargs:
       Cities:
-        - 'Newyork'
-        - 'Kitti'
+        - Newyork
+        - Kitti
+        - Berlin 
+        - Tokyo
+        - Brisbane
       index: 0
       configs_file: "Datasets/profile.yml"
       run: False 
