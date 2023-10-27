@@ -19,7 +19,7 @@ Experiments:
       configs_file: "Datasets/profile.yml"
       run: False 
       plotting: True
-  resposneToVelSpikes:
+  responseToVelSpikes:
     run: false
     args:
     kwargs:

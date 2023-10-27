@@ -12,17 +12,17 @@ Experiments:
       Cities:
         - Newyork
         - Kitti
-        # - Berlin 
-        # - Tokyo
-        # - Brisbane
+        - Berlin 
+        - Tokyo
+        - Brisbane
       index: 0
       configs_file: "Datasets/profile.yml"
-      run: False
+      run: true 
       plotting: True
   responseToVelSpikes:
-    run: false
+    run: true
     args:
     kwargs:
       randomSeedVariation: 7
-      run: False
+      run: true
       plotting: "Position"
