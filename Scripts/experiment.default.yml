@@ -12,9 +12,9 @@ Experiments:
       Cities:
         - Newyork
         - Kitti
-        # - Berlin 
-        # - Tokyo
-        # - Brisbane
+        - Berlin 
+        - Tokyo
+        - Brisbane
       index: 0
       configs_file: "Datasets/profile.yml"
       run: False
