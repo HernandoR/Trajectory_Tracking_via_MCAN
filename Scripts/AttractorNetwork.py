@@ -361,6 +361,15 @@ class attractorNetwork2D:
 
         
         return prev_weights/np.linalg.norm(prev_weights) if np.sum(prev_weights) > 0 else [np.nan]
+    def int_shift(self,prev_weights,delta_row,delta_col):
+        full_shift=prev_weights
+        # non_zero_rows, non_zero_cols=np.nonzero(prev_weights)
+        delta_row,delta_col=int(delta_row),int(delta_col)
+        # full_shift=np.zeros((self.N[0],self.N[1]))
+        # full_shift[non_zero_rows, non_zero_cols]=prev_weights[non_zero_rows, non_zero_cols]
+        full_shift=np.roll(full_shift,delta_row,axis=0)
+        full_shift=np.roll(full_shift,delta_col,axis=1)
+        return full_shift
     
     def update_weights_dynamics(self,prev_weights, direction, speed, moreResults=None):
         non_zero_rows, non_zero_cols=np.nonzero(prev_weights) # indexes of non zero prev_weights
@@ -372,15 +381,13 @@ class attractorNetwork2D:
         delta_row=np.round(speed*np.sin(np.deg2rad(direction)),6)
         delta_col=np.round(speed*np.cos(np.deg2rad(direction)),6)
         
-        func = lambda x: int(math.ceil(x)) if x < 0 else int(math.floor(x))
+        # simple int(x) behave exactly
+        # func = lambda x: int(math.ceil(x)) if x < 0 else int(math.floor(x))
 
 
         '''copied and shifted activity'''
         
-        full_shift=np.zeros((self.N[0],self.N[1]))
-        shifted_row_ids, shifted_col_ids=(non_zero_rows +func(delta_row))%self.N[0], (non_zero_cols+ func(delta_col))%self.N[1]
-        full_shift[shifted_row_ids, shifted_col_ids]=prev_weights[non_zero_rows, non_zero_cols]
-        # assert np.allclose(self.fractional_shift(full_shift,delta_row,delta_col),self.fractional_shift_new(full_shift,delta_row,delta_col)), f"wrong at delta{delta_row},{delta_row}"
+        full_shift=self.int_shift(prev_weights,delta_row,delta_col)
         copy_shift=self.fractional_shift(full_shift,delta_row,delta_col)*self.activity_mag
 
 
