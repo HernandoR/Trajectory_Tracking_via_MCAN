@@ -8,10 +8,8 @@ profile_value = os.environ.get("Profile", "default")
 profile_file = Path(f"./Scripts/experiment.{profile_value}.yml")
 
 
-config=yaml.load(open(profile_file),Loader=yaml.FullLoader)
+config=yaml.safe_load(open(profile_file,'r'))
 
-configs = yaml.load(open("Datasets/profile.yml", "r"), Loader=yaml.FullLoader)
-configs = configs["SelectiveMultiScale"]
 
 
 
@@ -35,7 +33,6 @@ def SelectiveMultiScale(Cities=['Newyork'], index=0, configs_file="Datasets/prof
 
 def main():
     exps=config["Experiments"]
-    pprint(exps)
     for k,v in exps.items():
         # run function by k with args and kargs in v
         if not v['run']:
