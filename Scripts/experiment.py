@@ -33,6 +33,7 @@ def SelectiveMultiScale(Cities=['Newyork'], index=0, configs_file="Datasets/prof
 
 def main():
     exps=config["Experiments"]
+    pprint(exps,sort_dicts=False)
     for k,v in exps.items():
         # run function by k with args and kargs in v
         if not v['run']:
