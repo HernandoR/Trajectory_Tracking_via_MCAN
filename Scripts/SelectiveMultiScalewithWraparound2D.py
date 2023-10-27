@@ -136,9 +136,9 @@ def runningAllPathsFromCity(City, scaleType, configs, run=False, plotting=False)
                 CAN.errorTwoCoordinateLists(x_integ, y_integ, x_grid, y_grid) / dist
             )
 
-        orderedErrorIDs = np.argsort(ATE)
-        print(f"scale type: {scaleType}")
-        print(f"orderedErrorIDs: {orderedErrorIDs}, ATE: {ATE}")
+        # orderedErrorIDs = np.argsort(ATE)
+        # print(f"scale type: {scaleType}")
+        # print(f"orderedErrorIDs: {orderedErrorIDs}, ATE: {ATE}")
         
 
         fig, ax = plt.subplots(figrows, figcols, figsize=(5, 5),dpi=300)
@@ -149,7 +149,8 @@ def runningAllPathsFromCity(City, scaleType, configs, run=False, plotting=False)
         for index in range(length):
             """load"""
             x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(
-                pathfile + f"{orderedErrorIDs[index]}.npy"
+                # pathfile + f"{orderedErrorIDs[index]}.npy"
+                pathfile + f"{index}.npy"
             )
 
             """color dictionary"""
@@ -163,6 +164,7 @@ def runningAllPathsFromCity(City, scaleType, configs, run=False, plotting=False)
             axs[index].axis("equal")
             axs[index].tick_params(axis="x", labelsize=6)
             axs[index].tick_params(axis="y", labelsize=6)
+            axs[index].set_title(f"path{index}, ATE{ATE[index]:.4f}",fontsize=6,pad=-6)
             # axs[i].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 
         print(
@@ -460,8 +462,8 @@ def data_processing(index):
 def plotKittiGT_singlevsMulti(index):
     multiPath = f"./Results/Kitti/CAN_Experiment_Output_Multi/TestingTrackswithGTpose_path{index}.npy"
     singlePath = f"./Results/Kitti/CAN_Experiment_Output_Single/TestingTrackswithGTpose_path{index}.npy"
-    x_gridM, y_gridM, x_integM, y_integM, x_integ_err, y_integ_err = np.load(multiPath)
     x_gridS, y_gridS, x_integS, y_integS, x_integ_err, y_integ_err = np.load(singlePath)
+    x_gridM, y_gridM, x_integM, y_integM, x_integ_err, y_integ_err = np.load(multiPath)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.6, 2.2),dpi=300)
     # fig.suptitle('Multiscale vs. Single Scale Kitti Odometry Path')
@@ -584,7 +586,7 @@ def scaleAblation(
 """Response to Velocity Spikes"""
 
 
-def resposneToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
+def responseToVelSpikes(randomSeedVariation=5, run=False, plotting=False):
     savePath = f"./Results/RandomData/VelSpikes_Experiment_Output/Integrated+CAN_velsWithSpikes.npy"
     savePath2 = (
         f"./Results/RandomData/VelSpikes_Experiment_Output/CANoutput_velsWithSpikes.npy"
