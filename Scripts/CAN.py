@@ -142,8 +142,6 @@ def hierarchicalNetwork2DGridNowrapNet(
 
     #Update selected scale
     for i in range(iterations):
-        # BUG: each iteration needs ~ 0.1 Sec for a 200*200 net
-        # mainly by this
         prev_weights[chosen_scale_idx][:], wrap_rows_cs, wrap_cols_cs= net.update_weights_dynamics(
             prev_weights[chosen_scale_idx][:],direction, delta[chosen_scale_idx])
         prev_weights[chosen_scale_idx][prev_weights[chosen_scale_idx][:]<0]=0

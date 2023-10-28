@@ -220,6 +220,7 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
     
     savepath = f"./Results/{City}/MultivsSingleErrors_Path{index}.png"
     savepath2 = f"./Results/PaperFigures/3_MultivsSingleErrors_Path{index}.pdf"
+   
     
     if run == True:
         errors = []
@@ -234,7 +235,11 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
             
             singlePath=f"./Results/{City}/MultivsSingle/MultivsSingleErrors_Path{index}_{maxSpeed:.2f}_SingleScale.npy"
             multiPath=f"./Results/{City}/MultivsSingle/MultivsSingleErrors_Path{index}_{maxSpeed:.2f}_MultiScale.npy"
-
+            
+            if not Path(singlePath).parent.exists():
+                Path(singlePath).parent.mkdir(parents=True)
+                
+            
             scales = [1]
             if Path(singlePath).exists():
                 x_grid, y_grid, x_integ, y_integ, x_integ_err, y_integ_err = np.load(singlePath)
@@ -259,8 +264,8 @@ def multiVsSingle(City, index, configs, desiredTestLength=500, run=False, plotti
         
     if plotting == True:
         if not Path(filepath).exists():
-            print(f"{City} {index} havent run yet, running...")
-            multiVsSingle(City, index, configs,desiredTestLength=desiredTestLength, run=True, plotting=False)
+            print(f"{City} {index} multivsSingle havent run yet, running...")
+            multiVsSingle(City, index, configs, desiredTestLength=desiredTestLength, run=True, plotting=False)
         # plt.figure(figsize=(2.7,2))
         fig, ax = plt.subplots(1, 1, figsize=(2.8, 2.2),dpi=300)
         # fig.tight_layout(pad=3)
