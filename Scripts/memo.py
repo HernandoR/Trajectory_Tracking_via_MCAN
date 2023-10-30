@@ -10,13 +10,14 @@
 # %%
 import math
 from typing import Callable
+from loguru import logger
 
 import numpy as np
 import scipy as sp
 
 
-def F(dist):
-    return math.exp(-dist)
+# def F(dist):
+#     return math.exp(-dist)
 
 
 class KernelFactory:
@@ -56,8 +57,11 @@ class AttractorNetwork:
         # self.inhibit_ker=inhibit_ker
         # self.excite_rad = excite_rad # kernel size
         # self.inhibit_rad = inhibit_rad # kernel size
+
+        # this 2 func should not modify the network itself
         self.excite_func = excite_func
         self.inhibit_func = inhibit_func
+
         self.iteration = iteration
         self.forget_ratio = forget_ratio
         # self.scale=scale
@@ -71,7 +75,7 @@ class AttractorNetwork:
         self.weights_mag = 1
         self.weights_history = []
         # self.weights_history.append(self.weights.copy())
-        self.init_weights()
+        self.init_activity()
 
     def spike(self):
         # return self.activity.argmax()
@@ -84,14 +88,23 @@ class AttractorNetwork:
     def inhibit(self):
         self.activity = self.inhibit_func(self)
         # self.activity_history.append(self.activity.copy())
+        
+    def scale_range (self, input, min, max):
+        input += -(np.min(input))
+        input /= np.max(input) / (max - min)
+        input += min
+        return input
 
     def normize(self):
+        # self.activity = self.scale_range(self.activity, 0, 1)
+        # self.activity = np.normize(self.activity)
+        
         self.activity_mag = np.linalg.norm(self.activity)
         self.activity /= self.activity_mag
         # self.activity_history.append(self.activity.copy())
-        
-    def copy_shift(self, delta_row, delta_col,positive_only=False):
-        preActivity=self.activity.copy()
+
+    def copy_shift(self, delta_row, delta_col, positive_only=False):
+        preActivity = self.activity.copy()
         if positive_only:
             preActivity[preActivity<0]=0
         self.activity = sp.ndimage.shift(
@@ -105,25 +118,27 @@ class AttractorNetwork:
         )
         # self.activity_history.append(self.activity.copy())
 
-    # def iterate(self):
-    #     for _ in range(self.iteration):
-    #         self.update()
-    #     self.activity_history.append(self.activity.copy())
+    def iterate(self):
+        # for _ in range(self.iteration):
+        self.update()
+        assert not np.any(np.isnan(self.activity))
+        self.activity_history.append(self.activity.copy())
 
     def update(self):
         self.excite()
-        self.inhibit()
+        # self.inhibit()
         self.normize()
-        self.activity_history.append(self.activity.copy())
-
-    def init_weights(self):
-        self.activity[0, 0] = 1
-        for _ in range(self.iteration):
-            self.update()
         # self.activity_history.append(self.activity.copy())
 
+    def init_activity(self):
+        self.activity[0, 0] = 1
+        self.iterate()
+        # for _ in range(self.iteration):
+        #     self.update()
+        # self.activity_history.append(self.activity.copy())
+
+
 # %%
-from loguru import logger
 
 
 class AN_Slam:
@@ -135,7 +150,6 @@ class AN_Slam:
 
         # self.tragety_histroy = [[0, 0]]
         self.tragety_histroy = []
-        
 
     def inject(self, vels):
         """inject information to the net
@@ -153,7 +167,7 @@ class AN_Slam:
         # self.network.shift(delta[0], delta[1])
         self.network.copy_shift(delta[0], delta[1],positive_only=True)
         self.network.activity+=preActivity*self.network.forget_ratio
-        self.network.update()
+        self.network.iterate()
         self.detect_boundry_across(vels, post_spike)
         self.tragety_histroy.append(list(self.decode()))
         pass
@@ -179,7 +193,7 @@ class AN_Slam:
                 raise ValueError(
                     "Spike_Movement is not equal to 0, nor positive or negative"
                 )
-                
+
         # # Used to be a more complicated way to detect the boundry
         # # but bug at Spike_Movement=0
         #
@@ -203,9 +217,10 @@ from matplotlib import pyplot as plt
 from math import ceil, floor, sqrt
 
 
-def construct_SLAM(exite_kernel_size=5, inhibt_kernel_size=10, net_size=200):
-
+def construct_SLAM(exite_kernel_size=7, inhibt_kernel_size=5, net_size=200):
     dist_func = lambda dist: math.exp(-dist)
+    # use gause kernel
+    # dist_func = lambda dist: math.exp(-(dist**2) / 2)
 
     # excite_func = lambda self: sp.signal.convolve2d(
     #     self.activity,
@@ -214,16 +229,17 @@ def construct_SLAM(exite_kernel_size=5, inhibt_kernel_size=10, net_size=200):
     #     boundary="wrap",
     # )
     def excite_func(Network: AttractorNetwork):
-        local_excite=sp.signal.convolve2d(
+        local_excite = sp.signal.convolve2d(
             Network.activity,
             KernelFactory.create(exite_kernel_size, dist_func),
             mode="same",
             boundary="wrap",
         )
-        Network.activity+=local_excite
-    
+        return Network.activity + local_excite
+
     def inhibit_func(Network: AttractorNetwork):
-        local_inhibit=sp.signal.convolve2d(
+        local_inhibit = 0
+        local_inhibit = sp.signal.convolve2d(
             Network.activity,
             KernelFactory.create(inhibt_kernel_size, dist_func),
             mode="same",
@@ -235,7 +251,7 @@ def construct_SLAM(exite_kernel_size=5, inhibt_kernel_size=10, net_size=200):
     # Kernel = KernelFactory.create(kernel_size, dist_func)
 
     an = AttractorNetwork(
-        net_size, excite_func, excite_func, iteration=3, forget_ratio=0
+        net_size, excite_func, inhibit_func, iteration=3, forget_ratio=0
     )
 
     test_ob = AN_Slam(an, 1)
@@ -308,7 +324,9 @@ def load_dataset(entry, configs_file="Datasets/profile.yml"):
 
 
 # %%
-def runCanAtPath(City, index, scaleType, traverseInfo_filePart, vel_profile, pathfile,an_slam=None):
+def runCanAtPath(
+    City, index, scaleType, traverseInfo_filePart, vel_profile, pathfile, an_slam=None
+):
     """running a single path in a city
     City = Berlin or Japan or Brisbane or Newyork or Kitti;
     scaleType = Single or Multi;
@@ -379,14 +397,22 @@ traverseInfo_filePart = configs[City]["traverseInfo_file"]
 vel_profile = configs[City]["vel_profile"]
 veltype = parseVelType(vel_profile)
 pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswith{veltype}_Path"
-an_slam=construct_SLAM()
+an_slam = construct_SLAM()
 
-posi_integ_log= runCanAtPath(
-    City, index, scaleType, traverseInfo_filePart, vel_profile, pathfile,an_slam
+posi_integ_log = runCanAtPath(
+    City, index, scaleType, traverseInfo_filePart, vel_profile, pathfile, an_slam
 )
 
-CAN_SLAM_Track=an_slam.tragety_histroy
-SLAM_Spike_histroy=an_slam.network.activity_history
+
+
+CAN_SLAM_Track = an_slam.tragety_histroy
+SLAM_Spike_histroy = an_slam.network.activity_history
+
+
+
+
+
+
 
 
 
@@ -405,11 +431,13 @@ plt.close("all")
 plt.plot(*zip(*data))
 plt.plot(*zip(*data2))
 plt.gca().invert_yaxis()
+fig.show()
 
 # %%
-sampled_SLAM_Spike_history=SLAM_Spike_histroy[::10]
-plt.close("all")
-data=sampled_SLAM_Spike_history
+sampled_SLAM_Spike_history = SLAM_Spike_histroy[::10]
+# plt.close("all")
+
+data = sampled_SLAM_Spike_history
 
 N = len(data)
 # n_col = 10
@@ -443,103 +471,73 @@ fig.suptitle(f"title")
 plt.subplots_adjust(top=0.93)
 # Adjust spacing between subplots
 # plt.tight_layout()
-# fig.show()
+fig.show()
 
 
+# # %%
+# import numpy as np
+# import matplotlib.pyplot as plt
 
+# # Create a 5x5 matrix filled with random values
+# matrix = np.random.rand(5, 5)
 
+# # Create subplots
+# fig, axs = plt.subplots(1, 2)
 
+# # Plot the matrix in the first subplot
+# axs[0].imshow(matrix, cmap="viridis")
+# axs[0].set_title("Matrix")
 
+# # Plot the matrix transposed in the second subplot
+# axs[1].imshow(matrix.T, cmap="viridis")
+# axs[1].set_title("Transposed Matrix")
 
+# # Adjust spacing between subplots
+# plt.tight_layout()
 
+# # Display the plot
+# lt.show()
 
+# # %%
 
+# # class Object(object):
+# #     def __init__(self,a,b,func) -> None:
+# #         self.a=a
+# #         self.b=b
+# #         self.func=func
+# #     def dosth(self):
+# #         return self.func(self)
 
+# # def func(Object):
+# #     return Object.a+Object.b
 
+# # test_ob=Object(1,2,func)
+# # test_ob.dosth()
 
+# # %%
 
+# N = 4  # 卷积核的大小
 
+# kernel = np.zeros((N, N))  # 创建一个全零的卷积核
 
+# center = (N - 1) / 2  # 卷积核的中心位置
 
-
-
-
-
-
-
-
-
-
-# %%
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Create a 5x5 matrix filled with random values
-matrix = np.random.rand(5, 5)
-
-# Create subplots
-fig, axs = plt.subplots(1, 2)
-
-# Plot the matrix in the first subplot
-axs[0].imshow(matrix, cmap="viridis")
-axs[0].set_title("Matrix")
-
-# Plot the matrix transposed in the second subplot
-axs[1].imshow(matrix.T, cmap="viridis")
-axs[1].set_title("Transposed Matrix")
-
-# Adjust spacing between subplots
-plt.tight_layout()
-
-# Display the plot
-plt.show()
-
-# %%
-
-# class Object(object):
-#     def __init__(self,a,b,func) -> None:
-#         self.a=a
-#         self.b=b
-#         self.func=func
-#     def dosth(self):
-#         return self.func(self)
-
-# def func(Object):
-#     return Object.a+Object.b
-
-# test_ob=Object(1,2,func)
-# test_ob.dosth()
-
-# %%
-import math
-
-
-def F(dist):
-    return math.exp(-dist)
-
-
-import numpy as np
-
-N = 4  # 卷积核的大小
-
-kernel = np.zeros((N, N))  # 创建一个全零的卷积核
-
-center = (N - 1) / 2  # 卷积核的中心位置
-
-for i in range(N):
-    for j in range(N):
-        dist = math.sqrt((i - center) ** 2 + (j - center) ** 2)  # 计算当前位置到中心位置的距离
-        kernel[i, j] = F(dist)  # 使用影响力函数计算影响力值
-
-weights = np.random.randn(N, N)
-# print(kernel)
-conv = sp.signal.convolve2d(weights, kernel, mode="same", boundary="wrap")
-circ = np.zeros(N, N)
 # for i in range(N):
 #     for j in range(N):
-#         circ[i,j]=np.sum
+#         dist = math.sqrt((i - center) ** 2 + (j - center) ** 2)  # 计算当前位置到中心位置的距离
+#         kernel[i, j] = F(dist)  # 使用影响力函数计算影响力值
 
-# %%
-conv
+# weights = np.random.randn(N, N)
+# # print(kernel)
+# conv = sp.signal.convolve2d(weights, kernel, mode="same", boundary="wrap")
+# circ = np.zeros(N, N)
+# # for i in range(N):
+# #     for j in range(N):
+# #         circ[i,j]=np.sum
+
+# # %%
+# conv
+
+# # %%
 
 # %%
