@@ -20,4 +20,5 @@ folium
 geopy
 pip
 pyyaml
+loguru
 git+https://github.com/garrettj403/SciencePlots.git#egg
