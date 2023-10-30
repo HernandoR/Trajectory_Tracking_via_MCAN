@@ -397,7 +397,12 @@ traverseInfo_filePart = configs[City]["traverseInfo_file"]
 vel_profile = configs[City]["vel_profile"]
 veltype = parseVelType(vel_profile)
 pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswith{veltype}_Path"
-an_slam = construct_SLAM()
+
+# higher net_size, higher accuracy
+# which is odd, since the scale is defined at the cell level
+# however, it is possible that the higher net_size, the more accurate the excite and inhibit kernel
+# or, the wrap around is introduced other noises
+an_slam = construct_SLAM(exite_kernel_size=7, inhibt_kernel_size=5, net_size=50)
 
 posi_integ_log = runCanAtPath(
     City, index, scaleType, traverseInfo_filePart, vel_profile, pathfile, an_slam
@@ -434,7 +439,7 @@ plt.gca().invert_yaxis()
 fig.show()
 
 # %%
-sampled_SLAM_Spike_history = SLAM_Spike_histroy[::10]
+sampled_SLAM_Spike_history = SLAM_Spike_histroy[::1]
 # plt.close("all")
 
 data = sampled_SLAM_Spike_history
