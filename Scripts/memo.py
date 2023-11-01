@@ -166,7 +166,7 @@ class AN_Slam:
         preActivity = self.network.activity.copy()
         # self.network.shift(delta[0], delta[1])
         self.network.copy_shift(delta[0], delta[1],positive_only=True)
-        self.network.activity+=preActivity*self.network.forget_ratio
+        # self.network.activity+=preActivity*self.network.forget_ratio
         self.network.iterate()
         self.detect_boundry_across(vels, post_spike)
         self.tragety_histroy.append(list(self.decode()))
@@ -381,9 +381,9 @@ def runCanAtPath(
         q[0], q[1] = q[0] + vel[i] * np.cos(q[2]), q[1] + vel[i] * np.sin(q[2])
         posi_integ_log[i] = list(q[0:2])
 
-        decare_vel = np.array([vel[i] * np.cos(q[2]), vel[i] * np.sin(q[2])])
+        descartes_vel = np.array([vel[i] * np.cos(q[2]), vel[i] * np.sin(q[2])])
 
-        an_slam.inject(decare_vel)
+        an_slam.inject(descartes_vel)
 
     return posi_integ_log
     # print(f"finished {City}, id {index}")
@@ -436,7 +436,7 @@ plt.close("all")
 plt.plot(*zip(*data))
 plt.plot(*zip(*data2))
 plt.gca().invert_yaxis()
-fig.show()
+# fig.show()
 
 # %%
 sampled_SLAM_Spike_history = SLAM_Spike_histroy[::1]
