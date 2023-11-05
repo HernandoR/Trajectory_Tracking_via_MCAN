@@ -19,6 +19,7 @@ geopandas
 folium
 geopy
 pip
+pykitti
 pyyaml
 loguru
 git+https://github.com/garrettj403/SciencePlots.git#egg
