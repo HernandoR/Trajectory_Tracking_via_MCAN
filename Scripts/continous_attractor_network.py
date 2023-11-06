@@ -77,10 +77,9 @@ class AttractorNetwork:
             preActivity[preActivity<0]=0
         self.activity = sp.ndimage.shift(
             preActivity, (delta_row, delta_col), mode="wrap"
-        ) + self.activity * self.forget_ratio
+        ) + self.activity * (1-self.forget_ratio)
 
     def shift(self, delta_row, delta_col):
-        # self.activity *= self.forget_ratio
         self.activity = sp.ndimage.shift(
             self.activity, (delta_row, delta_col), mode="wrap"
         )
