@@ -8,7 +8,9 @@
 
 
 # %%
+from cgi import test
 import math
+import pprint
 from re import S
 from typing import Callable
 from loguru import logger
@@ -24,35 +26,15 @@ from tqdm import tqdm
 import numpy as np
 import scipy as sp
 
+from pprint import pprint
+
 
 from matplotlib import pyplot as plt
 from math import ceil, floor, sqrt
 
 from continous_attractor_network import AttractorNetwork
-from can_slam import An_Slam
-
-from copy import deepcopy
-
-
-# def F(dist):
-#     return math.exp(-dist)
-
-
-class KernelFactory:
-    # def __init__(self, kernel_size, weight_func):
-    #     self.kernel_size = kernel_size
-    #     self.weight_func = weight_func
-    @staticmethod
-    def create(kernel_size, dist_func: Callable) -> np.ndarray:
-        kernel = np.zeros((kernel_size, kernel_size))  # 创建一个全零的卷积核
-        center = (kernel_size - 1) / 2  # 卷积核的中心位置
-        for i in range(kernel_size):
-            for j in range(kernel_size):
-                dist = math.sqrt(
-                    (i - center) ** 2 + (j - center) ** 2
-                )  # 计算当前位置到中心位置的距离
-                kernel[i, j] = dist_func(dist)  # 使用影响力函数计算影响力值
-        return kernel
+from can_slam import An_Slam, MAn_Slam
+from kernel_factory import KernelFactory
 
 
 # %%
@@ -109,10 +91,10 @@ def load_kitti_odometry(index):
 def get_scales_and_neurons(scale_type):
     if scale_type == "Multi":
         scales = [0.25, 1, 4, 16]
-        num_neurons = 100
+        num_neurons = 16
     elif scale_type == "Single":
         scales = [1]
-        num_neurons = 200
+        num_neurons = 40
     return scales, num_neurons
 
 
@@ -131,7 +113,7 @@ def generate_random_velocities(vel_profile, index, test_length):
     return vel
 
 
-def integrate_position(city, vel, ang_vel, q, test_length):
+def integrate_position(city, vel, ang_vel, q, test_length,an_slam):
     posi_integ_log = [[0, 0] for _ in range(test_length)]
     tbar = tqdm(range(1, test_length), disable="GITHUB_ACTIONS" in os.environ)
     for i in tbar:
@@ -147,37 +129,42 @@ def integrate_position(city, vel, ang_vel, q, test_length):
 def construct_slam(
     excite_kernel_size=7,
     inhibit_kernel_size=5,
-    net_size=80,
+    net_size=20,
     local_inhibit_factor=0.16,
     global_inhibit_factor=6.51431074e-04,
     iteration=3,
     forget_ratio=0.95,
-    scale=1,
+    scales=[1],
     influence_func: Callable[[float], float] = None,
     excite_func: Callable[["AttractorNetwork"], np.ndarray] = None,
     inhibit_func: Callable[["AttractorNetwork"], np.ndarray] = None,
 ):
-    def default_excite_func(Network: "AttractorNetwork") -> np.ndarray:
+    def default_influence_func(dist:int,Concentration=0.67):
+        dist*=3
+        return np.exp(-(dist/Concentration)**2)*2
+    
+    if influence_func is None:
+        influence_func = default_influence_func
+        
+    def default_excite_func(activity: np.asarray) -> np.ndarray:
         local_excite = sp.signal.convolve2d(
-            Network.activity,
+            activity,
             KernelFactory.create(excite_kernel_size, influence_func),
             mode="same",
             boundary="wrap",
         )
-        return Network.activity + local_excite
+        return activity + local_excite
 
-    def default_inhibit_func(Network: "AttractorNetwork") -> np.ndarray:
-        local_inhibit = local_inhibit_factor * sp.signal.convolve2d(
-            Network.activity,
-            KernelFactory.create(inhibit_kernel_size, influence_func),
-            mode="same",
-            boundary="wrap",
-        )
-        global_inhibit = Network.activity.sum() * global_inhibit_factor
-        return Network.activity - (global_inhibit + local_inhibit)
-
-    if influence_func is None:
-        influence_func = lambda dist: math.exp(-dist)
+    def default_inhibit_func(activity: np.asarray) -> np.ndarray:
+        local_inhibit = 0
+        # local_inhibit = local_inhibit_factor * sp.signal.convolve2d(
+        #     activity,
+        #     (1-KernelFactory.create(inhibit_kernel_size, influence_func)),
+        #     mode="same",
+        #     boundary="wrap",
+        # )
+        global_inhibit = activity.sum() * global_inhibit_factor
+        return activity - (global_inhibit + local_inhibit)
 
     if excite_func is None:
         excite_func = default_excite_func
@@ -185,15 +172,21 @@ def construct_slam(
     if inhibit_func is None:
         inhibit_func = default_inhibit_func
 
-    an = AttractorNetwork(
-        net_size,
-        excite_func,
-        inhibit_func,
-        iteration=iteration,
-        forget_ratio=forget_ratio,
-    )
+    # an = AttractorNetwork(
+    #     N=net_size,
+    #     excite_func=excite_func,
+    #     inhibit_func=inhibit_func,
+    #     iteration=iteration,
+    #     forget_ratio=forget_ratio,
+    # )
+    An_args={"N":net_size,
+        "excite_func":excite_func,
+        "inhibit_func":inhibit_func,
+        "iteration":iteration,
+        "forget_ratio":forget_ratio}
 
-    test_ob = An_Slam(an, scale=scale)
+    # test_ob = An_Slam(An_args, scale=scale)
+    test_ob = MAn_Slam(An_args, scales=scales)
     return test_ob
 
 
@@ -213,6 +206,9 @@ def run_can_at_path(
 
     vel, ang_vel = load_traverse_info(traverse_info_file_part, index)
 
+    # MEMO, for testing
+    # vel=vel[:1000]
+
     scales, num_neurons = get_scales_and_neurons(scale_type)
 
     test_length = get_test_length(city, vel)
@@ -228,7 +224,7 @@ def run_can_at_path(
     q_err = np.zeros(3)
     x_grid_expect, y_grid_expect = 0, 0
 
-    posi_integ_log = integrate_position(city, vel, ang_vel, q, test_length)
+    posi_integ_log = integrate_position(city, vel, ang_vel, q, test_length, an_slam)
 
     return posi_integ_log, an_slam
 
@@ -293,20 +289,24 @@ pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswit
 # however, it is possible that the higher net_size, the more accurate the excite and inhibit kernel
 # or, the wrap around is introduced other noises
 
+
 SLAM_configs = {
-    "excite_kernel_size": 9,
+    "excite_kernel_size": 7,
     "inhibit_kernel_size": 7,
-    "net_size":200,
+    "net_size":625,
     "local_inhibit_factor": 0.16,
-    "global_inhibit_factor": 6.51431074e-04,
+    # "global_inhibit_factor": 6.51431074e-04,
+    "global_inhibit_factor": 0.001,
     "iteration": 3,
-    "forget_ratio": 0.95,
-    "scale": 0.1,
+    "forget_ratio": 0.99,
+    "scales": [2],
     "influence_func": None,
     "excite_func": None,
     "inhibit_func": None,
 }
+SNRs=np.logspace(0, 0, 0)
 
+pprint(SLAM_configs)
 
 an_slam = construct_slam(**SLAM_configs)
 
@@ -314,14 +314,14 @@ posi_integ_log, an_slam = run_can_at_path(
     City, index, scaleType, traverseInfo_filePart, vel_profile, dt, pathfile, an_slam
 )
 
-CAN_SLAM_Track_Baseline = an_slam.tragety_histroy
-SLAM_Spike_histroy = an_slam.networks.activity_history
+CAN_SLAM_Track_Baseline = an_slam.get_tragety_histroy()
+SLAM_Spike_histroy = an_slam.get_activity_history()[0]
 
 integrated_tracks = [posi_integ_log]
 integrated_labels = ["posi_integ_log"]
 Slam_tracks = [CAN_SLAM_Track_Baseline]
 Slam_labels = ["CAN_SLAM_Track"]
-SNRs=np.logspace(3, 0, 4)
+
 for SNR in SNRs:
     an_slam = construct_slam(**SLAM_configs)
     integrated_track, an_slam = run_can_at_path(
@@ -335,7 +335,7 @@ for SNR in SNRs:
         an_slam,
         SNR=SNR,
     )
-    noisy_posi_integ_log = an_slam.tragety_histroy
+    noisy_posi_integ_log = an_slam.get_tragety_histroy()
 
     integrated_tracks.append(integrated_track)
     integrated_labels.append(f"posi_integ_log_{10*math.log10(SNR):.1f}db")
@@ -355,13 +355,42 @@ fig = plt.figure()
 
 for data, label in zip(integrated_tracks, integrated_labels):
     plt.plot(*zip(*data), '.-', label=label)
+# fig = plt.figure()
+
+# plt.plot(*zip(*Slam_tracks[0]), '.-', label=Slam_labels[0])
+
+for data, label in zip(Slam_tracks, Slam_labels):
+    plt.plot(*zip(*data), '-', label=label)
     
 plt.legend()
 
 # %%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# %%
 # inte_ATEs_log=[ np.linalg.norm(data-posi_integ_log) for data in integrated_tracks]
 inte_Errors_log = [
-    np.linalg.norm(np.array(data) - np.array(posi_integ_log), axis=1)
+    np.linalg.norm(np.array(data[:]) - np.array(posi_integ_log), axis=1)
     for data in integrated_tracks
 ]
 SLAM_Errors_log = [

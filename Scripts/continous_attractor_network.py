@@ -1,22 +1,22 @@
 
-from typing import Callable
+from typing import Callable,List
 import numpy as np
 import scipy as sp
 
 class AttractorNetwork:
     def __init__(
         self,
-        N: int,
-        # excite_rad: int,
-        # inhibit_rad: int,
-        excite_func: Callable,
-        inhibit_func: Callable,
-        # exite_ker: np.ndarray,
-        # inhibit_ker: np.ndarray,
+        N: int=None,
+        excite_func: Callable = None,
+        inhibit_func: Callable = None,
         iteration: int = 3,
         forget_ratio: float = 0.4,
         # scale=1 # distance per cube
     ) -> None:
+        
+        if any([arg is None for arg in [N, excite_func, inhibit_func]]):
+            raise ValueError("At least one of N, excite_func, inhibit_func should be provided")
+        
         self.N = N
         self.shape = [N, N]
         # self.excite_ker=exite_ker
@@ -45,17 +45,24 @@ class AttractorNetwork:
 
     def spike(self):
         # return self.activity.argmax()
-        return np.array(np.unravel_index(self.activity.argmax(), self.shape))
+        # should be negative if in left or bottom part
+        # return np.array(np.unravel_index(self.activity.argmax(), self.shape))
+        raw_spike = np.array(np.unravel_index(self.activity.argmax(), self.shape))
+        return raw_spike - np.array(self.shape) // 2
 
-    def excite(self):
-        self.activity = self.excite_func(self)
+    def excite(self,activity):
+        activity = self.excite_func(activity)
+        return activity
         # self.activity_history.append(self.activity.copy())
 
-    def inhibit(self):
-        self.activity = self.inhibit_func(self)
+    def inhibit(self,activity):
+        activity = self.inhibit_func(activity)
         # minimum is 0
-        self.activity[self.activity<0]=0
+        activity[activity<0]=0
+        return activity
         # self.activity_history.append(self.activity.copy())
+    def log_activity(self):
+        self.activity_history.append(self.activity.copy())
         
     def scale_range (self, input, min, max):
         input += -(np.min(input))
@@ -63,43 +70,100 @@ class AttractorNetwork:
         input += min
         return input
 
-    def normize(self):
+    def normize(self,activity):
         # self.activity = self.scale_range(self.activity, 0, 1)
         # self.activity = np.normize(self.activity)
         
-        self.activity_mag = np.linalg.norm(self.activity)
-        self.activity /= self.activity_mag
-        # self.activity_history.append(self.activity.copy())
+        activity_mag = np.linalg.norm(self.activity)
+        activity /= activity_mag
+        return activity
 
-    def copy_shift(self, delta_row, delta_col, positive_only=False):
-        preActivity = self.activity.copy()
-        if positive_only:
-            preActivity[preActivity<0]=0
-        self.activity = sp.ndimage.shift(
-            preActivity, (delta_row, delta_col), mode="wrap"
-        ) + self.activity * (1-self.forget_ratio)
+    # def copy_shift(self, delta_row, delta_col, positive_only=False):
+    #     preActivity = self.activity.copy()
+    #     if positive_only:
+    #         preActivity[preActivity<0]=0
+    #     self.activity = sp.ndimage.shift(
+    #         preActivity, (delta_row, delta_col), mode="wrap"
+    #     ) + self.activity * (1-self.forget_ratio)
 
-    def shift(self, delta_row, delta_col):
-        self.activity = sp.ndimage.shift(
-            self.activity, (delta_row, delta_col), mode="wrap"
+    def shift(self, delta_row, delta_col, activity = None ):
+        if activity is None:
+            activity = self.activity.copy()
+        activity = sp.ndimage.shift(
+            activity, (delta_row, delta_col), mode="wrap"
         )
+        return activity
         # self.activity_history.append(self.activity.copy())
-
-    def iterate(self):
+        
+    def iterate(self,delta=[0,0]):
         # for _ in range(self.iteration):
-        self.update()
+        self.update(delta)
         assert not np.any(np.isnan(self.activity))
-        self.activity_history.append(self.activity.copy())
+        self.log_activity()
 
-    def update(self):
-        self.excite()
-        self.inhibit()
-        self.normize()
-        # self.activity_history.append(self.activity.copy())
+    def update(self,delta=[0,0]):
+        X=self.activity.copy()
+        S=self.shift(delta[0], delta[1])
+        E=self.excite(S)
+        I=self.inhibit(X+S+E)
+        self.activity = self.normize(X*(1-self.forget_ratio)+I*self.forget_ratio)
+        pass
 
     def init_activity(self):
-        self.activity[0, 0] = 1
+        # self.activity[0, 0] = 1
+        if self.N is None:
+            raise ValueError("N should be provided")
+        
+        if self.N % 2 == 0:
+            # even, activare the center 4
+            self.activity[self.N // 2: self.N // 2 + 2, self.N // 2: self.N // 2 + 2] = 0.25
+        else:
+            # odd, activare the center 1
+            self.activity[self.N // 2, self.N // 2] = 1
+            
+        
         self.iterate()
         # for _ in range(self.iteration):
         #     self.update()
         # self.activity_history.append(self.activity.copy())
+
+    # def response_boundry_across(self, boundry_across: List[int]):
+    #     """response to boundry across
+    #     """
+    #     for idx, boundry in enumerate(boundry_across):
+    #         if boundry == 0:
+    #             continue
+    #         elif boundry > 0:
+    #             # spike move to the right, while vel is to the left
+    #             # therefore, the spike cross the left boundry
+    #             self.warp[idx] -= self.networks[idx].shape[idx] * self.scale
+    #         elif boundry < 0:
+    #             # spike move to the left, while vel is to the right
+    #             # therefore, the spike cross the right boundry
+    #             self.warp[idx] += self.networks[idx].shape[idx] * self.scale
+    #         else:
+    #             raise ValueError(
+    #                 "Spike_Movement is not equal to 0, nor positive or negative"
+    #             )
+    
+    def detect_boundry_across(self, injected_dir: np.asarray, post_spike: np.asarray) -> np.asarray:
+        injected_dir = np.where(injected_dir > 0, 1, -1) # 1 for positive, -1 for negative, movement on each dimention
+        Spike_Movement = self.networks.spike() - post_spike
+        
+        boundary_accross=[0 for _ in range(len(injected_dir))]
+        
+        for idx, (injected_dir, Spike_Movement) in zip(injected_dir, Spike_Movement):
+            if Spike_Movement == 0:
+                # no boundry cross if spike is not moving
+                boundary_accross[idx] = 0
+            elif Spike_Movement > 0 and injected_dir < 0:
+                    self.warp -= self.networks.shape * self.scale
+            elif Spike_Movement < 0 and injected_dir > 0:
+                # spike move to the left, while vel is to the right
+                # therefore, the spike cross the right boundry
+                    self.warp += self.networks.shape * self.scale
+            else:
+                raise ValueError(
+                    "Spike_Movement is not equal to 0, nor positive or negative"
+                )
+        
