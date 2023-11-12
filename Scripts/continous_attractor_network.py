@@ -105,7 +105,7 @@ class AttractorNetwork:
         X=self.activity.copy()
         S=self.shift(delta[0], delta[1])
         E=self.excite(S)
-        I=self.inhibit(X+S+E)
+        I=self.inhibit(S+E)
         self.activity = self.normize(X*(1-self.forget_ratio)+I*self.forget_ratio)
         pass
 
