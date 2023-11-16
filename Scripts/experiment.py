@@ -207,7 +207,7 @@ def run_can_at_path(
     vel, ang_vel = load_traverse_info(traverse_info_file_part, index)
 
     # MEMO, for testing
-    # vel=vel[:1000]
+    vel=vel[:1000]
 
     scales, num_neurons = get_scales_and_neurons(scale_type)
 
@@ -293,7 +293,7 @@ pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswit
 SLAM_configs = {
     "excite_kernel_size": 7,
     "inhibit_kernel_size": 7,
-    "net_size":625,
+    "net_size":25,
     "local_inhibit_factor": 0.16,
     # "global_inhibit_factor": 6.51431074e-04,
     "global_inhibit_factor": 0.001,
@@ -353,8 +353,8 @@ plt.close("all")
 # ATE = np.linalg.norm(np.array(data) - np.array(data2)) / len(data)
 fig = plt.figure()
 
-for data, label in zip(integrated_tracks, integrated_labels):
-    plt.plot(*zip(*data), '.-', label=label)
+# for data, label in zip(integrated_tracks, integrated_labels):
+#     plt.plot(*zip(*data), '.-', label=label)
 # fig = plt.figure()
 
 # plt.plot(*zip(*Slam_tracks[0]), '.-', label=Slam_labels[0])
@@ -372,7 +372,6 @@ plt.legend()
 
 
 
-0
 
 
 

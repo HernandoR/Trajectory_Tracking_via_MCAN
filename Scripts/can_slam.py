@@ -54,8 +54,10 @@ class MAn_Slam:
             )
         deltas=decide_deltas(vels, self.scales)
         for idx, delta in enumerate(deltas):
-            # post_spike = self.networks[idx].spike()
+            post_spike = self.networks[idx].spike()
             self.networks[idx].iterate(delta)
+            baxs=self.networks[idx].detect_boundry_across(vels, post_spike)
+            self.networks[idx-1].handle_lower_boundry_across(baxs)
             # self.networks[idx].activity = self.networks[idx].shift(*delta)
             # self.networks[idx].iterate()
             
