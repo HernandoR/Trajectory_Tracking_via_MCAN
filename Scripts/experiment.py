@@ -8,7 +8,6 @@
 
 
 # %%
-from cgi import test
 import math
 import pprint
 from re import S
@@ -43,8 +42,8 @@ from kernel_factory import KernelFactory
 def parseVelType(vel_profile):
     # either a list or a string
     # if list, then it is [vel_min,vel_max,vel_var]
-    # if string, then it mostly "GTpose" for kitty
-    if type(vel_profile) == list:
+    # if string, then it mostly "GTpose" for kitti
+    if isinstance(vel_profile, list):
         vel_min, vel_max, vel_var = vel_profile
         veltype = f"Speeds{vel_min}to{vel_max}var{vel_var}"
     else:
@@ -142,10 +141,10 @@ def construct_slam(
     def default_influence_func(dist:int,Concentration=0.67):
         dist*=3
         return np.exp(-(dist/Concentration)**2)*2
-    
+
     if influence_func is None:
         influence_func = default_influence_func
-        
+
     def default_excite_func(activity: np.asarray) -> np.ndarray:
         local_excite = sp.signal.convolve2d(
             activity,
@@ -361,7 +360,7 @@ fig = plt.figure()
 
 for data, label in zip(Slam_tracks, Slam_labels):
     plt.plot(*zip(*data), '-', label=label)
-    
+
 plt.legend()
 
 # %%
