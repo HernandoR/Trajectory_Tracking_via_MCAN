@@ -16,10 +16,10 @@ def decide_deltas(vels: np.ndarray, scales: list):
 
     for idx, scale in enumerate(scales):
         # deltas[idx] += vels // scale
-        deltas[idx] = vels / scale
-        # vel = vels % scale
+        deltas[idx] = vels // scale
+        vels = vels % scale
     # fractional part will remains only goes to the last layer
-    # deltas[-1] += vel/scales[-1]
+    deltas[-1] += vels/scales[-1]
     return deltas
             
 
@@ -53,11 +53,18 @@ class MAn_Slam:
                 f"the vel of {vels} exceeding the limit {Maxium_vels} of Maximum network"
             )
         deltas=decide_deltas(vels, self.scales)
+        
+        # for each layer
         for idx, delta in enumerate(deltas):
             post_spike = self.networks[idx].spike()
             self.networks[idx].iterate(delta)
-            baxs=self.networks[idx].detect_boundry_across(vels, post_spike)
-            self.networks[idx-1].handle_lower_boundry_across(baxs)
+            # The direction of global velocity it's not necessarily equal to the direction of spike movement
+            baxs=self.networks[idx].detect_boundry_across(delta, post_spike)
+            if any(baxs):
+                if idx==0:
+                    logger.warning(f"first layer (largest scale) is crossing boundry")
+                    continue
+                self.networks[idx-1].handle_lower_boundry_across(baxs)
             # self.networks[idx].activity = self.networks[idx].shift(*delta)
             # self.networks[idx].iterate()
             
@@ -70,9 +77,12 @@ class MAn_Slam:
     def decode(self):
         # Here, we should allow it to be some kind of ngeative
         # AKA, go left at the begining of the network
-        posi=[0.0,0.0]
+        Maxium_vels = self.scales[0] * self.networks[0].shape[0]
+        posi=[Maxium_vels/2,Maxium_vels/2]
         for idx, network in enumerate(self.networks):
             posi+=network.spike()*self.scales[idx]
+        posi=posi % [Maxium_vels,Maxium_vels]
+        posi-=Maxium_vels/2
         return posi
         
         

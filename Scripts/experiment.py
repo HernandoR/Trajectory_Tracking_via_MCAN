@@ -10,7 +10,6 @@
 # %%
 import math
 import pprint
-from re import S
 from typing import Callable
 from loguru import logger
 
@@ -121,7 +120,9 @@ def integrate_position(city, vel, ang_vel, q, test_length,an_slam):
         q[1] += vel[i] * np.sin(q[2])
         posi_integ_log[i] = list(q[0:2])
         descartes_vel = np.array([vel[i] * np.cos(q[2]), vel[i] * np.sin(q[2])])
+        
         an_slam.inject(descartes_vel)
+        
     return posi_integ_log
 
 
@@ -206,7 +207,7 @@ def run_can_at_path(
     vel, ang_vel = load_traverse_info(traverse_info_file_part, index)
 
     # MEMO, for testing
-    vel=vel[:1000]
+    # vel=vel[:1000]
 
     scales, num_neurons = get_scales_and_neurons(scale_type)
 
@@ -298,7 +299,7 @@ SLAM_configs = {
     "global_inhibit_factor": 0.001,
     "iteration": 3,
     "forget_ratio": 0.99,
-    "scales": [2],
+    "scales": [50,2],
     "influence_func": None,
     "excite_func": None,
     "inhibit_func": None,
@@ -352,16 +353,23 @@ plt.close("all")
 # ATE = np.linalg.norm(np.array(data) - np.array(data2)) / len(data)
 fig = plt.figure()
 
-# for data, label in zip(integrated_tracks, integrated_labels):
-#     plt.plot(*zip(*data), '.-', label=label)
+
+
+for data, label in zip(integrated_tracks, integrated_labels):
+    plt.plot(*zip(*data), '-', label=label)
 # fig = plt.figure()
 
 # plt.plot(*zip(*Slam_tracks[0]), '.-', label=Slam_labels[0])
 
 for data, label in zip(Slam_tracks, Slam_labels):
-    plt.plot(*zip(*data), '-', label=label)
+    plt.plot(*zip(*data), '.-', label=label)
 
 plt.legend()
+
+
+diff=np.array(integrated_tracks)-np.array(Slam_tracks)
+l2_dist = np.sqrt(np.sum(diff ** 2))
+print(l2_dist)
 
 # %%
 

@@ -1,4 +1,5 @@
 
+import re
 from typing import Callable,List
 from loguru import logger
 import numpy as np
@@ -45,12 +46,6 @@ class AttractorNetwork:
         self.init_activity()
         self.warp=np.zeros(2)
 
-    def spike(self):
-        # return self.activity.argmax()
-        # should be negative if in left or bottom part
-        # return np.array(np.unravel_index(self.activity.argmax(), self.shape))
-        raw_spike = np.array(np.unravel_index(self.activity.argmax(), self.shape))
-        return raw_spike - np.array(self.shape) // 2
 
     def excite(self,activity):
         activity = self.excite_func(activity)
@@ -92,7 +87,7 @@ class AttractorNetwork:
         if activity is None:
             activity = self.activity.copy()
         activity = sp.ndimage.shift(
-            activity, (delta_row, delta_col), mode="wrap"
+            activity, (delta_row, delta_col), mode="grid-wrap"
         )
         return activity
         # self.activity_history.append(self.activity.copy())
@@ -110,18 +105,34 @@ class AttractorNetwork:
         I=self.inhibit(S+E)
         self.activity = self.normize(X*(1-self.forget_ratio)+I*self.forget_ratio)
         pass
+    
+    def spike(self):
+        # return self.activity.argmax()
+        # should be negative if in left or bottom part
+        # return np.array(np.unravel_index(self.activity.argmax(), self.shape))
+        raw_spike = np.array(np.unravel_index(self.activity.argmax(), self.shape))
+        # Notice that spike can be either posi or negtive
+        # output range [-N/2, N/2)
+        # return raw_spike - np.array(self.shape) // 2
+        return raw_spike
 
     def init_activity(self):
         # self.activity[0, 0] = 1
         if self.N is None:
             raise ValueError("N should be provided")
-
-        if self.N % 2 == 0:
-            # even, activare the center 4
-            self.activity[self.N // 2: self.N // 2 + 2, self.N // 2: self.N // 2 + 2] = 0.25
-        else:
-            # odd, activare the center 1
-            self.activity[self.N // 2, self.N // 2] = 1
+        
+        
+        # init at the center, provice negative value but hard to understand,
+        # and activity is quaterted
+        # if self.N % 2 == 0:
+        #     # even, activare the center 4
+        #     self.activity[self.N // 2: self.N // 2 + 2, self.N // 2: self.N // 2 + 2] = 0.25
+        # else:
+        #     # odd, activare the center 1
+        #     self.activity[self.N // 2, self.N // 2] = 1
+            
+        # init at 0,0
+        self.activity[0, 0] = 1
 
         self.iterate()
         # for _ in range(self.iteration):
@@ -131,37 +142,68 @@ class AttractorNetwork:
     # report if boundry is crossed
     # This function should be called by a higher level object
     # as the network itself keeps a warp manifold
-    def detect_boundry_across(self, injected_dir: np.asarray, post_spike: np.asarray, recall_fun: Callable=None) -> np.asarray:
-        injected_dir = np.where(injected_dir > 0, 1, np.where(injected_dir < 0, -1, 0)) # 1 for positive, -1 for negative, movement on each dimention
-        Spike_Movement = self.spike() - post_spike
-
-        boundary_across=[0 for _ in range(len(injected_dir))]
-
-        for idx, (injected_dir, Spike_Movement) in enumerate(zip(injected_dir, Spike_Movement)):
-
-            if Spike_Movement == 0:
-                # no boundry cross if spike is not moving
-                boundary_across[idx] = 0
-            elif Spike_Movement > 0 and injected_dir < 0:
-                    # self.warp -= self.networks.shape * self.scale
-                boundary_across[idx] = -1 # negative value represents cross to the left
-            elif Spike_Movement < 0 and injected_dir > 0:
-                # spike move to the left, while vel is to the right
-                # therefore, the spike cross the right boundry
-                    # self.warp += self.networks.shape * self.scale
-                boundary_across[idx] = 1 # positive value represents cross to the right
-            else:
+    def detect_boundry_across(self, injected_movement: np.asarray, post_spike: np.asarray, recall_fun: Callable=None) -> np.asarray:
+        
+        current_landing = self.spike() 
+        draft_landing= post_spike + injected_movement
+        # if expection and reality are close enough
+        valifications=np.where(abs(current_landing-draft_landing%self.shape[0])>self.shape[0]/2,False,True)
+        
+        draft_Boundary_across = np.where(draft_landing >= self.shape[0], 1, 
+                                         np.where(draft_landing < 0, -1, 0)) 
+        valid_boundary_across=[0 for _ in range(len(draft_Boundary_across))]
+        for idx in range(len(draft_Boundary_across)):
+            # for each dimention
+            if valifications[idx]:
+                # expection and reality are close enough
+                valid_boundary_across[idx] = draft_Boundary_across[idx]
                 continue
-                # raise ValueError(
-                #     "Spike_Movement is not equal to 0, nor positive or negative"
-                # )
+            
+            # if expection and reality are far away, one, and only one of them is crossed
+            if draft_Boundary_across[idx] != 0:
+                # if draft_Boundary_across[idx] is not 0, then the reality is not crossed
+                valid_boundary_across[idx] = 0
+                continue
+            
+            # if draft_Boundary_across[idx] is 0, then the reality is crossed
+            # the problem is, which boundry is crossed?
+            valid_boundary_across[idx] =np.where(injected_movement[idx] > 0, 1, -1)
+                
+                
+        assert np.all(np.isin(valid_boundary_across, [-1, 0, 1]))
+        return valid_boundary_across
+        
+        
+        # injected_dir = np.where(injected_dir > 0, 1, np.where(injected_dir < 0, -1, 0)) # 1 for positive, -1 for negative, movement on each dimention
+        # Spike_Movement = self.spike() - post_spike
 
-        if recall_fun is not None:
-            recall_fun(boundary_across)
-        return boundary_across
+        # boundary_across=[0 for _ in range(len(injected_dir))]
+
+        # for idx, (injected_dir, Spike_Movement) in enumerate(zip(injected_dir, Spike_Movement)):
+
+        #     if Spike_Movement == 0:
+        #         # no boundry cross if spike is not moving
+        #         boundary_across[idx] = 0
+        #     elif Spike_Movement > 0 and injected_dir < 0:
+        #             # self.warp -= self.networks.shape * self.scale
+        #         boundary_across[idx] = -1 # negative value represents cross to the left
+        #     elif Spike_Movement < 0 and injected_dir > 0:
+        #         # spike move to the left, while vel is to the right
+        #         # therefore, the spike cross the right boundry
+        #             # self.warp += self.networks.shape * self.scale
+        #         boundary_across[idx] = 1 # positive value represents cross to the right
+        #     else:
+        #         continue
+        #         # raise ValueError(
+        #         #     "Spike_Movement is not equal to 0, nor positive or negative"
+        #         # )
+
+        # if recall_fun is not None:
+        #     recall_fun(boundary_across)
+        # return boundary_across
 
     def handle_lower_boundry_across(self, boundary_across: np.ndarray) -> None:
-        pass
+        self.update(delta=boundary_across)
 
     def respond_to_boundary_cross(self, boundary_across: np.ndarray) -> None:
         self.warp += self.networks.shape * boundary_across
