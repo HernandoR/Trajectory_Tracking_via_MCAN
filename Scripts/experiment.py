@@ -369,6 +369,8 @@ plt.legend()
 
 diff=np.array(integrated_tracks)-np.array(Slam_tracks)
 l2_dist = np.sqrt(np.sum(diff ** 2))
+window_size = 5 # 滑动窗口大小为5
+l2_dist = np.convolve(l2_dist, np.ones(window_size)/window_size, mode='valid')
 print(l2_dist)
 
 # %%
@@ -403,6 +405,8 @@ SLAM_Errors_log = [
     np.linalg.norm(np.array(data) - np.array(posi_integ_log), axis=1)
     for data in Slam_tracks
 ]
+
+
 # plt.plot(inte_ATEs_log[1], "o", label=integrated_labels[0])
 # plt.plot(SLAM_ATEs_log[1], "-", label=Slam_labels[0])
 
