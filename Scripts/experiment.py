@@ -275,7 +275,8 @@ def multi_plot(data):
 # %%
 
 configs = load_dataset("SelectiveMultiScale")
-City = "Kitti"
+City = ["Kitti","Newyork"][1]
+
 index = 0
 dt = 1
 scaleType = "Single"
@@ -289,21 +290,25 @@ pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswit
 # however, it is possible that the higher net_size, the more accurate the excite and inhibit kernel
 # or, the wrap around is introduced other noises
 
+MAX_SCALE=75*4
+Layer_Num=2
+net_size=25
 
 SLAM_configs = {
     "excite_kernel_size": 7,
     "inhibit_kernel_size": 7,
-    "net_size":25,
+    "net_size":net_size,
     "local_inhibit_factor": 0.16,
     # "global_inhibit_factor": 6.51431074e-04,
     "global_inhibit_factor": 0.001,
     "iteration": 3,
-    "forget_ratio": 0.99,
-    "scales": [50,2],
+    "forget_ratio": 0.95,
+    "scales":[MAX_SCALE/(net_size**k) for k in range(0,Layer_Num)],
     "influence_func": None,
     "excite_func": None,
     "inhibit_func": None,
 }
+    # "scales": [MAX_SCALE/k for k in range(1,Layer_Num+1)],
 SNRs=np.logspace(0, 0, 0)
 
 pprint(SLAM_configs)
@@ -359,7 +364,7 @@ for data, label in zip(integrated_tracks, integrated_labels):
     plt.plot(*zip(*data), '-', label=label)
 # fig = plt.figure()
 
-# plt.plot(*zip(*Slam_tracks[0]), '.-', label=Slam_labels[0])
+plt.plot(*zip(*Slam_tracks[0]), '.-', label=Slam_labels[0])
 
 for data, label in zip(Slam_tracks, Slam_labels):
     plt.plot(*zip(*data), '.-', label=label)
@@ -369,8 +374,8 @@ plt.legend()
 
 diff=np.array(integrated_tracks)-np.array(Slam_tracks)
 l2_dist = np.sqrt(np.sum(diff ** 2))
-window_size = 5 # 滑动窗口大小为5
-l2_dist = np.convolve(l2_dist, np.ones(window_size)/window_size, mode='valid')
+# window_size = 5 # 滑动窗口大小为5
+# l2_dist = np.convolve(l2_dist, np.ones(window_size)/window_size, mode='valid')
 print(l2_dist)
 
 # %%

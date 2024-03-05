@@ -6,7 +6,7 @@ numba
 opencv-python
 pandas
 scikit-learn
-scikit-learn-intelex
+# scikit-learn-intelex
 scipy
 shapely
 tqdm

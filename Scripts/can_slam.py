@@ -54,15 +54,20 @@ class MAn_Slam:
             )
         deltas=decide_deltas(vels, self.scales)
         
+        post_spikes = [network.spike() for network in self.networks]
+        for idx in range(len(self.networks)-1,-1,-1):
+        #     # iterate backward
+            post_spike = post_spikes[idx]
+            delta = deltas[idx]
         # for each layer
-        for idx, delta in enumerate(deltas):
-            post_spike = self.networks[idx].spike()
+        # for idx, delta in enumerate(deltas):
+        #     post_spike = self.networks[idx].spike()
             self.networks[idx].iterate(delta)
             # The direction of global velocity it's not necessarily equal to the direction of spike movement
             baxs=self.networks[idx].detect_boundry_across(delta, post_spike)
             if any(baxs):
                 if idx==0:
-                    logger.warning(f"first layer (largest scale) is crossing boundry")
+                    # logger.warning(f"first layer (largest scale) is crossing boundry")
                     continue
                 self.networks[idx-1].handle_lower_boundry_across(baxs)
             # self.networks[idx].activity = self.networks[idx].shift(*delta)

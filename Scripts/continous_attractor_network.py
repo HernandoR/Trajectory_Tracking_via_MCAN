@@ -142,36 +142,88 @@ class AttractorNetwork:
     # report if boundry is crossed
     # This function should be called by a higher level object
     # as the network itself keeps a warp manifold
+    # def detect_boundry_across_dep(self, injected_movement: np.asarray, post_spike: np.asarray, recall_fun: Callable=None) -> np.asarray:
+        
+    #     current_landing = self.spike() 
+    #     draft_landing= post_spike + injected_movement
+    #     # if expection and reality are close enough
+    #     valifications=np.where(abs(current_landing-draft_landing%self.shape[0])<self.shape[0]/2,True,False)
+        
+    #     draft_Boundary_across = np.where(draft_landing >= self.shape[0], 1, 
+    #                                      np.where(draft_landing < 0, -1, 0)) 
+    #     valid_boundary_across=[0 for _ in range(len(draft_Boundary_across))]
+    #     for idx in range(len(draft_Boundary_across)):
+    #         # for each dimention
+    #         if valifications[idx]:
+    #             # expection and reality are close enough
+    #             valid_boundary_across[idx] = draft_Boundary_across[idx]
+    #             continue
+            
+    #         # if expection and reality are far away, one, and only one of them is crossed
+    #         if draft_Boundary_across[idx] != 0:
+    #             # if draft_Boundary_across[idx] is not 0, then the reality is not crossed
+    #             valid_boundary_across[idx] = 0
+    #             continue
+            
+    #         # if draft_Boundary_across[idx] is 0, then the reality is crossed
+    #         # the problem is, which boundry is crossed?
+    #         valid_boundary_across[idx] =np.where(injected_movement[idx] > 0, 1, -1)
+                
+                
+    #     assert np.all(np.isin(valid_boundary_across, [-1, 0, 1]))
+    #     return valid_boundary_across
+    
     def detect_boundry_across(self, injected_movement: np.asarray, post_spike: np.asarray, recall_fun: Callable=None) -> np.asarray:
-        
-        current_landing = self.spike() 
-        draft_landing= post_spike + injected_movement
+        # current_landing = self.spike() 
+        movement = self.spike() - post_spike
         # if expection and reality are close enough
-        valifications=np.where(abs(current_landing-draft_landing%self.shape[0])>self.shape[0]/2,False,True)
-        
-        draft_Boundary_across = np.where(draft_landing >= self.shape[0], 1, 
-                                         np.where(draft_landing < 0, -1, 0)) 
-        valid_boundary_across=[0 for _ in range(len(draft_Boundary_across))]
-        for idx in range(len(draft_Boundary_across)):
-            # for each dimention
-            if valifications[idx]:
-                # expection and reality are close enough
-                valid_boundary_across[idx] = draft_Boundary_across[idx]
-                continue
-            
-            # if expection and reality are far away, one, and only one of them is crossed
-            if draft_Boundary_across[idx] != 0:
-                # if draft_Boundary_across[idx] is not 0, then the reality is not crossed
+        lenth_valifications=np.where(abs(movement-injected_movement)<self.shape[0]/3,True,False)
+
+        movement_direction = np.where(movement > 0, 1, np.where(movement < 0, -1, 0)) 
+            # 1 for positive, -1 for negative, movement on each dimention
+        injected_direction = np.where(injected_movement > 0, 1, np.where(injected_movement < 0, -1, 0))
+
+        at_same_direction = np.where(movement_direction == injected_direction, True, False)
+
+        valid_boundary_across=[0 for _ in range(len(at_same_direction))]
+
+        # if expection and reality are close enough
+        for idx in range(len(at_same_direction)):
+            if lenth_valifications[idx] and at_same_direction[idx]:
                 valid_boundary_across[idx] = 0
-                continue
-            
-            # if draft_Boundary_across[idx] is 0, then the reality is crossed
-            # the problem is, which boundry is crossed?
-            valid_boundary_across[idx] =np.where(injected_movement[idx] > 0, 1, -1)
+                # continue
+            else:
+                if abs(movement[idx])<=2 and abs(injected_movement[idx])<=2:
+                    # if the movement is too small, then it is not a cross
+                    valid_boundary_across[idx]=0
+                    # continue
+                else:
+                    t = - movement_direction[idx] if movement_direction[idx]!=0 else injected_direction[idx]
+                    valid_boundary_across[idx]=t
+
                 
-                
+            # else:
+            #         # valid_boundary_across[idx] = - movement_direction[idx] 
+            #     if movement_direction[idx]!=0:
+            #         valid_boundary_across[idx]= - movement_direction[idx]
+            #         continue
+            #     else:
+            #         # when injected ~24, the movement ==0
+            #         # when injected ~-24, the movement ==0
+            #         if lenth_valifications[idx]:
+            #             # when injected ~0, the movement ==0
+            #             valid_boundary_across[idx]=0
+            #         else:
+            #             valid_boundary_across[idx]=injected_direction
+                    
+
         assert np.all(np.isin(valid_boundary_across, [-1, 0, 1]))
         return valid_boundary_across
+
+
+
+
+
         
         
         # injected_dir = np.where(injected_dir > 0, 1, np.where(injected_dir < 0, -1, 0)) # 1 for positive, -1 for negative, movement on each dimention
