@@ -47,6 +47,15 @@ class AttractorNetwork:
         self.warp=np.zeros(2)
 
 
+    def shift(self, delta_row, delta_col, activity = None ):
+        if activity is None:
+            activity = self.activity.copy()
+        activity = sp.ndimage.shift(
+            activity, (delta_row, delta_col), mode="grid-wrap"
+        )
+        return activity
+        # self.activity_history.append(self.activity.copy())
+
     def excite(self,activity):
         activity = self.excite_func(activity)
         return activity
@@ -58,14 +67,6 @@ class AttractorNetwork:
         activity[activity<0]=0
         return activity
         # self.activity_history.append(self.activity.copy())
-    def log_activity(self):
-        self.activity_history.append(self.activity.copy())
-
-    def scale_range (self, input, min, max):
-        input += -(np.min(input))
-        input /= np.max(input) / (max - min)
-        input += min
-        return input
 
     def normize(self,activity):
         # self.activity = self.scale_range(self.activity, 0, 1)
@@ -75,37 +76,6 @@ class AttractorNetwork:
         activity /= activity_mag
         return activity
 
-    # def copy_shift(self, delta_row, delta_col, positive_only=False):
-    #     preActivity = self.activity.copy()
-    #     if positive_only:
-    #         preActivity[preActivity<0]=0
-    #     self.activity = sp.ndimage.shift(
-    #         preActivity, (delta_row, delta_col), mode="wrap"
-    #     ) + self.activity * (1-self.forget_ratio)
-
-    def shift(self, delta_row, delta_col, activity = None ):
-        if activity is None:
-            activity = self.activity.copy()
-        activity = sp.ndimage.shift(
-            activity, (delta_row, delta_col), mode="grid-wrap"
-        )
-        return activity
-        # self.activity_history.append(self.activity.copy())
-
-    def iterate(self,delta=[0,0]):
-        # for _ in range(self.iteration):
-        self.update(delta)
-        assert not np.any(np.isnan(self.activity))
-        self.log_activity()
-
-    def update(self,delta=[0,0]):
-        X=self.activity.copy()
-        S=self.shift(delta[0], delta[1])
-        E=self.excite(S)
-        I=self.inhibit(S+E)
-        self.activity = self.normize(X*(1-self.forget_ratio)+I*self.forget_ratio)
-        pass
-    
     def spike(self):
         # return self.activity.argmax()
         # should be negative if in left or bottom part
@@ -115,6 +85,23 @@ class AttractorNetwork:
         # output range [-N/2, N/2)
         # return raw_spike - np.array(self.shape) // 2
         return raw_spike
+
+    def update(self,delta=[0,0]):
+        X=self.activity.copy()
+        S=self.shift(delta[0], delta[1])
+        E=self.excite(S)
+        I=self.inhibit(S+E)
+        self.activity = self.normize(X*(1-self.forget_ratio)+I*self.forget_ratio)
+        pass
+
+    def iterate(self,delta=[0,0]):
+        # for _ in range(self.iteration):
+        self.update(delta)
+        assert not np.any(np.isnan(self.activity))
+        self.log_activity()
+
+    def log_activity(self):
+        self.activity_history.append(self.activity.copy())
 
     def init_activity(self):
         # self.activity[0, 0] = 1
@@ -139,41 +126,10 @@ class AttractorNetwork:
         #     self.update()
         # self.activity_history.append(self.activity.copy())
 
-    # report if boundry is crossed
-    # This function should be called by a higher level object
-    # as the network itself keeps a warp manifold
-    # def detect_boundry_across_dep(self, injected_movement: np.asarray, post_spike: np.asarray, recall_fun: Callable=None) -> np.asarray:
-        
-    #     current_landing = self.spike() 
-    #     draft_landing= post_spike + injected_movement
-    #     # if expection and reality are close enough
-    #     valifications=np.where(abs(current_landing-draft_landing%self.shape[0])<self.shape[0]/2,True,False)
-        
-    #     draft_Boundary_across = np.where(draft_landing >= self.shape[0], 1, 
-    #                                      np.where(draft_landing < 0, -1, 0)) 
-    #     valid_boundary_across=[0 for _ in range(len(draft_Boundary_across))]
-    #     for idx in range(len(draft_Boundary_across)):
-    #         # for each dimention
-    #         if valifications[idx]:
-    #             # expection and reality are close enough
-    #             valid_boundary_across[idx] = draft_Boundary_across[idx]
-    #             continue
-            
-    #         # if expection and reality are far away, one, and only one of them is crossed
-    #         if draft_Boundary_across[idx] != 0:
-    #             # if draft_Boundary_across[idx] is not 0, then the reality is not crossed
-    #             valid_boundary_across[idx] = 0
-    #             continue
-            
-    #         # if draft_Boundary_across[idx] is 0, then the reality is crossed
-    #         # the problem is, which boundry is crossed?
-    #         valid_boundary_across[idx] =np.where(injected_movement[idx] > 0, 1, -1)
-                
-                
-    #     assert np.all(np.isin(valid_boundary_across, [-1, 0, 1]))
-    #     return valid_boundary_across
-    
-    def detect_boundry_across(self, injected_movement: np.asarray, post_spike: np.asarray, recall_fun: Callable=None) -> np.asarray:
+    def detect_boundry_across(self, 
+                              injected_movement: np.asarray, 
+                              post_spike: np.asarray, 
+                              recall_fun: Callable=None) -> np.asarray:
         # current_landing = self.spike() 
         movement = self.spike() - post_spike
         # if expection and reality are close enough
@@ -254,10 +210,32 @@ class AttractorNetwork:
         #     recall_fun(boundary_across)
         # return boundary_across
 
-    def handle_lower_boundry_across(self, boundary_across: np.ndarray) -> None:
+    def handle_lower_boundry_across(
+            self, boundary_across: np.ndarray) -> None:
         self.update(delta=boundary_across)
+
+
+
+
+
+
 
     def respond_to_boundary_cross(self, boundary_across: np.ndarray) -> None:
         self.warp += self.networks.shape * boundary_across
         logger.warning(f'cross boundry {boundary_across} been handled by warp')
         pass
+
+
+    def scale_range (self, input, min, max):
+        input += -(np.min(input))
+        input /= np.max(input) / (max - min)
+        input += min
+        return input
+
+    # def copy_shift(self, delta_row, delta_col, positive_only=False):
+    #     preActivity = self.activity.copy()
+    #     if positive_only:
+    #         preActivity[preActivity<0]=0
+    #     self.activity = sp.ndimage.shift(
+    #         preActivity, (delta_row, delta_col), mode="wrap"
+    #     ) + self.activity * (1-self.forget_ratio)
