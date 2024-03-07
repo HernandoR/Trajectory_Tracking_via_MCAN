@@ -76,6 +76,7 @@ class AttractorNetwork:
         activity /= activity_mag
         return activity
 
+
     def spike(self):
         # return self.activity.argmax()
         # should be negative if in left or bottom part
@@ -99,6 +100,7 @@ class AttractorNetwork:
         self.update(delta)
         assert not np.any(np.isnan(self.activity))
         self.log_activity()
+
 
     def log_activity(self):
         self.activity_history.append(self.activity.copy())
@@ -174,6 +176,8 @@ class AttractorNetwork:
                     
 
         assert np.all(np.isin(valid_boundary_across, [-1, 0, 1]))
+        if recall_fun is not None:
+            recall_fun(valid_boundary_across)
         return valid_boundary_across
 
 
