@@ -3,7 +3,7 @@ SelectiveMultiScale:
     vel_profile: [0,20,1] # vel_min,vel_max,vel_var
     length: 18
     traverseInfo_file: './Datasets/CityScaleSimulatorVelocities/Berlin/BerlineEnvPath'
-    figshape: [6,3] # row,col how subfigs align in the figure
+    figshape: [5,4] # row,col how subfigs align in the figure
   Tokyo:
     vel_profile: [0,20,2] # vel_min,vel_max,vel_var
     length: 4

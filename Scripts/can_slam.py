@@ -14,12 +14,19 @@ def decide_deltas(vels: np.ndarray, scales: list):
     # scales for now is a list of distance per cube, from large to small
     deltas = [0]*len(scales)
 
-    for idx, scale in enumerate(scales):
-        # deltas[idx] += vels // scale
-        deltas[idx] = vels // scale
-        vels = vels % scale
-    # fractional part will remains only goes to the last layer
+    # for idx, scale in enumerate(scales):
+    #     # deltas[idx] += vels // scale
+    #     deltas[idx] = vels // scale
+    #     vels = vels % scale
+    # # fractional part will remains only goes to the last layer
+    # deltas[-1] += vels/scales[-1]
+    
+    for idx,scale in enumerate(scales):
+        deltas[idx] += np.around(vels/scale)
+        vels -= deltas[idx]*scale
+    
     deltas[-1] += vels/scales[-1]
+    
     return deltas
             
 

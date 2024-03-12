@@ -151,7 +151,8 @@ class AttractorNetwork:
                 valid_boundary_across[idx] = 0
                 # continue
             else:
-                if abs(movement[idx])<=2 and abs(injected_movement[idx])<=2:
+                if abs(movement[idx])<=(self.shape[0]/4) and abs(injected_movement[idx])<=(self.shape[0]/4):
+                # if abs(movement[idx])<=2 and abs(injected_movement[idx])<=2:
                     # if the movement is too small, then it is not a cross
                     valid_boundary_across[idx]=0
                     # continue
@@ -217,6 +218,8 @@ class AttractorNetwork:
     def handle_lower_boundry_across(
             self, boundary_across: np.ndarray) -> None:
         self.update(delta=boundary_across)
+        # self.activity=self.shift(boundary_across[0],boundary_across[1])
+
 
 
 

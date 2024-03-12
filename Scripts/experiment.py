@@ -9,13 +9,21 @@
 
 # %%
 import math
+from pathlib import Path
+import pickle
 import pprint
-from typing import Callable
+import random
+from re import A
+from token import OP
+from turtle import title
+from typing import Callable, Optional
+
 from loguru import logger
 
 from typing import Dict, List, Tuple
 
 import numpy as np
+from pyparsing import White
 import scipy as sp
 
 import pykitti
@@ -35,6 +43,9 @@ from math import ceil, floor, sqrt
 from continous_attractor_network import AttractorNetwork
 from can_slam import An_Slam, MAn_Slam
 from kernel_factory import KernelFactory
+
+%load_ext autoreload
+%autoreload 2
 
 
 # %%
@@ -88,7 +99,9 @@ def load_kitti_odometry(index):
 
 
 # %%
-def get_scales_and_neurons(scale_type):
+def get_scales_and_neurons(
+    scale_type,
+):
     if scale_type == "Multi":
         scales = [0.25, 1, 4, 16]
         num_neurons = 16
@@ -98,11 +111,14 @@ def get_scales_and_neurons(scale_type):
     return scales, num_neurons
 
 
-def get_test_length(city, vel):
-    if city == "Kitti":
+def get_test_length(city, vel, test):
+    if not test:
         test_length = len(vel)
     else:
-        test_length = min(len(vel), 500)  # suppress for testing
+        if city == "Kitti":
+            test_length = len(vel)
+        else:
+            test_length = min(len(vel), test)  # suppress for testing  
     return test_length
 
 
@@ -113,7 +129,7 @@ def generate_random_velocities(vel_profile, index, test_length):
     return vel
 
 
-def integrate_position(city, vel, ang_vel, q, test_length,an_slam):
+def integrate_position(city, vel, ang_vel, q, test_length, an_slam):
     posi_integ_log = [[0, 0] for _ in range(test_length)]
     tbar = tqdm(range(1, test_length), disable="GITHUB_ACTIONS" in os.environ)
     for i in tbar:
@@ -122,9 +138,9 @@ def integrate_position(city, vel, ang_vel, q, test_length,an_slam):
         q[1] += vel[i] * np.sin(q[2])
         posi_integ_log[i] = list(q[0:2])
         descartes_vel = np.array([vel[i] * np.cos(q[2]), vel[i] * np.sin(q[2])])
-        
+
         an_slam.inject(descartes_vel)
-        
+
     return posi_integ_log
 
 
@@ -141,9 +157,9 @@ def construct_slam(
     excite_func: Callable[["AttractorNetwork"], np.ndarray] = None,
     inhibit_func: Callable[["AttractorNetwork"], np.ndarray] = None,
 ):
-    def default_influence_func(dist:int,Concentration=0.67):
-        dist*=3
-        return np.exp(-(dist/Concentration)**2)*2
+    def default_influence_func(dist: int, Concentration=0.67):
+        dist *= 3
+        return np.exp(-((dist / Concentration) ** 2)) * 2
 
     if influence_func is None:
         influence_func = default_influence_func
@@ -181,11 +197,13 @@ def construct_slam(
     #     iteration=iteration,
     #     forget_ratio=forget_ratio,
     # )
-    An_args={"N":net_size,
-        "excite_func":excite_func,
-        "inhibit_func":inhibit_func,
-        "iteration":iteration,
-        "forget_ratio":forget_ratio}
+    An_args = {
+        "N": net_size,
+        "excite_func": excite_func,
+        "inhibit_func": inhibit_func,
+        "iteration": iteration,
+        "forget_ratio": forget_ratio,
+    }
 
     # test_ob = An_Slam(An_args, scale=scale)
     test_ob = MAn_Slam(An_args, scales=scales)
@@ -198,10 +216,11 @@ def run_can_at_path(
     scale_type,
     traverse_info_file_part,
     vel_profile,
-    dt,
-    pathfile,
+    dt=None,
+    pathfile=None,
     an_slam=None,
     SNR=1e8,  # 80db
+    test:Optional[int]=500,
 ):
     if an_slam is None:
         an_slam = construct_slam()
@@ -211,9 +230,9 @@ def run_can_at_path(
     # MEMO, for testing
     # vel=vel[:1000]
 
-    scales, num_neurons = get_scales_and_neurons(scale_type)
+    # scales, num_neurons = get_scales_and_neurons(scale_type)
 
-    test_length = get_test_length(city, vel)
+    test_length = get_test_length(city, vel, test)
 
     if isinstance(vel_profile, list):
         vel = generate_random_velocities(vel_profile, index, test_length)
@@ -240,15 +259,16 @@ def singlePlot(data_list, label_list):
     return fig
 
 
-def multi_plot(data):
+def multi_plot(data,title="title"):
     size_mag = 0.5
 
     N = len(data)
     # n_col = 10
-    n_row = 10
+    n_row = ceil(sqrt(N))
     n_col = ceil(N / n_row)
+    N=n_row*n_col
 
-    n_col, n_row = n_row, n_col
+    # n_col, n_row = n_row, n_col
 
     fig, ax = plt.subplots(
         n_row, n_col, figsize=(n_col * size_mag, n_row * size_mag), dpi=300
@@ -268,16 +288,19 @@ def multi_plot(data):
     # axs[index].invert_yaxis()
     # axs[index].set_title(f'id={index}')
 
-    fig.suptitle(f"title")
-
+    fig.suptitle(f"{title}")
     plt.subplots_adjust(top=0.93)
     return fig
 
 
 # %%
+# %%
 
+
+plt.style.use('default')
+#%%
 configs = load_dataset("SelectiveMultiScale")
-City = ["Kitti","Newyork"][1]
+City = ["Kitti", "Newyork"][0]
 
 index = 0
 dt = 1
@@ -292,26 +315,26 @@ pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswit
 # however, it is possible that the higher net_size, the more accurate the excite and inhibit kernel
 # or, the wrap around is introduced other noises
 
-MAX_SCALE=75*4
-Layer_Num=2
-net_size=25
+MAX_SCALE = 300
+Layer_Num = 3
+net_size = 25
 
 SLAM_configs = {
     "excite_kernel_size": 7,
     "inhibit_kernel_size": 7,
-    "net_size":net_size,
+    "net_size": net_size,
     "local_inhibit_factor": 0.16,
     # "global_inhibit_factor": 6.51431074e-04,
     "global_inhibit_factor": 0.001,
     "iteration": 3,
-    "forget_ratio": 0.95,
-    "scales":[MAX_SCALE/(net_size**k) for k in range(0,Layer_Num)],
+    "forget_ratio": 0.7,
+    "scales": [MAX_SCALE / (net_size**k) for k in range(0, Layer_Num)],
     "influence_func": None,
     "excite_func": None,
     "inhibit_func": None,
 }
-    # "scales": [MAX_SCALE/k for k in range(1,Layer_Num+1)],
-SNRs=np.logspace(0, 0, 0)
+# "scales": [MAX_SCALE/k for k in range(1,Layer_Num+1)],
+SNRs = np.logspace(0, 0, 0)
 
 pprint(SLAM_configs)
 
@@ -322,32 +345,30 @@ posi_integ_log, an_slam = run_can_at_path(
 )
 
 CAN_SLAM_Track_Baseline = an_slam.get_tragety_histroy()
-SLAM_Spike_histroy = an_slam.get_activity_history()[0]
+SLAM_Spike_histroy = an_slam.get_activity_history()[-1]
 
 integrated_tracks = [posi_integ_log]
 integrated_labels = ["posi_integ_log"]
 Slam_tracks = [CAN_SLAM_Track_Baseline]
 Slam_labels = ["CAN_SLAM_Track"]
 
-for SNR in SNRs:
-    an_slam = construct_slam(**SLAM_configs)
-    integrated_track, an_slam = run_can_at_path(
-        City,
-        index,
-        scaleType,
-        traverseInfo_filePart,
-        vel_profile,
-        dt,
-        pathfile,
-        an_slam,
-        SNR=SNR,
-    )
-    noisy_posi_integ_log = an_slam.get_tragety_histroy()
 
-    integrated_tracks.append(integrated_track)
-    integrated_labels.append(f"posi_integ_log_{10*math.log10(SNR):.1f}db")
-    Slam_tracks.append(noisy_posi_integ_log)
-    Slam_labels.append(f"noisy_posi_integ_log_{10*math.log10(SNR):.1f}db")
+plt.close("all")
+# data=test_ob.tragety_histroy
+
+# plt.gca().set_title(f"ATE={ATE}")
+# fig.show()
+
+random_sample=np.random.choice(len(SLAM_Spike_histroy),7*8)
+sampled_SLAM_Spike_history = [SLAM_Spike_histroy[i] for i in random_sample]
+# sampled_SLAM_Spike_history = SLAM_Spike_histroy[::64]
+# plt.close("all")
+
+
+fig = multi_plot(sampled_SLAM_Spike_history,title='')
+# Adjust spacing between subplots
+# plt.tight_layout()
+fig.savefig(f"./Results/SLAM_Spike_histroy.png")
 
 # test_ob.activity
 # data = CAN_SLAM_Track
@@ -358,37 +379,39 @@ plt.close("all")
 fig = plt.figure()
 
 
-
 for data, label in zip(integrated_tracks, integrated_labels):
-    plt.plot(*zip(*data), '-', label=label)
+    plt.plot(*zip(*data), "-", label=label)
 # fig = plt.figure()
 
-plt.plot(*zip(*Slam_tracks[0]), '.-', label=Slam_labels[0])
+plt.plot(*zip(*Slam_tracks[0]), ".-", label=Slam_labels[0])
 
 for data, label in zip(Slam_tracks, Slam_labels):
-    plt.plot(*zip(*data), '.-', label=label)
+    plt.plot(*zip(*data), ".-", label=label)
 
 plt.legend()
 
 
-diff=np.array(integrated_tracks)-np.array(Slam_tracks)
-l2_dist = np.sqrt(np.sum(diff ** 2))
+diff = np.array(integrated_tracks) - np.array(Slam_tracks)
+l2_dist = np.sqrt(np.sum(diff**2))
 # window_size = 5 # 滑动窗口大小为5
 # l2_dist = np.convolve(l2_dist, np.ones(window_size)/window_size, mode='valid')
 print(l2_dist)
 
 # %%
 
-
-def all_runner(overite_config:Dict):
+def all_runner(
+    City="Kitti", scales=None, overite_config: Dict = None, return_posi_integ_log=False
+):
     configs = load_dataset("SelectiveMultiScale")
-    Cities=list(configs.keys())
-    scaleType = "Single"
-
-    for City in Cities:
+    city_configs = configs[City]
+    path_num = city_configs["length"]
+    an_traectorys_logs=[]
+    posi_integ_logs=[]
+    for index in range(path_num):
         traverseInfo_filePart = configs[City]["traverseInfo_file"]
         vel_profile = configs[City]["vel_profile"]
         veltype = parseVelType(vel_profile)
+        scaleType = "Single" if scales == 1 else "Multi"
         pathfile = f"./Results/{City}/CAN_Experiment_Output_{scaleType}/TestingTrackswith{veltype}_Path"
 
         # higher net_size, higher accuracy
@@ -396,37 +419,45 @@ def all_runner(overite_config:Dict):
         # however, it is possible that the higher net_size, the more accurate the excite and inhibit kernel
         # or, the wrap around is introduced other noises
 
-        MAX_SCALE=75*4
-        Layer_Num=2
-        net_size=25
-
         SLAM_configs = {
             "excite_kernel_size": 7,
             "inhibit_kernel_size": 7,
-            "net_size":net_size,
-            "local_inhibit_factor": 0.16,
+            "net_size": net_size,
+            "local_inhibit_factor": 0.04,
             # "global_inhibit_factor": 6.51431074e-04,
             "global_inhibit_factor": 0.001,
             "iteration": 3,
-            "forget_ratio": 0.95,
-            "scales":[MAX_SCALE/(net_size**k) for k in range(0,Layer_Num)],
+            "forget_ratio": 0.9,
+            "scales": scales,
             "influence_func": None,
             "excite_func": None,
             "inhibit_func": None,
         }
 
-        pprint(City,index,SLAM_configs)
-            # "scales": [MAX_SCALE/k for k in range(1,Layer_Num+1)],
+        pprint([City, index, SLAM_configs])
+        # "scales": [MAX_SCALE/k for k in range(1,Layer_Num+1)],
 
         an_slam = construct_slam(**SLAM_configs)
 
         posi_integ_log, an_slam = run_can_at_path(
-            City, index, scaleType, traverseInfo_filePart, vel_profile, dt, pathfile, an_slam
+            City,
+            index,
+            scaleType,
+            traverseInfo_filePart,
+            vel_profile,
+            dt,
+            pathfile,
+            an_slam,
         )
+        posi_integ_logs.append(posi_integ_log)
+        an_traectorys_logs.append(an_slam.get_tragety_histroy())
+    assert len(an_traectorys_logs)==path_num
+    if return_posi_integ_log:
+        return posi_integ_logs, an_traectorys_logs
+    return an_traectorys_logs
 
-    return an_slam
 
-def track_drawer(track:List,label:List,title:str):
+def track_drawer(track: List, label: List, title: str):
     fig = plt.figure()
     for data, label in zip(track, label):
         plt.plot(*zip(*data), label=label)
@@ -434,7 +465,176 @@ def track_drawer(track:List,label:List,title:str):
     plt.title(title)
     plt.legend()
     return fig
+
+# def AET_drawer( city: str, ATEs: List, track_lenths: List, ATE_per_meters: List):
+#     paths=len(ATEs)
+
+
+def sweep_runner(
+    overite_config: Dict = None,
+    output_path: Path = Path(f"Results/Sweep"),
+    overite: bool = False,
+    Layers=[1,2,4],
+    ):
+
+    configs = load_dataset("SelectiveMultiScale")
+    # output_path = Path(f"Results/Sweep")
+    Cities = list(configs.keys())
+    MAX_SCALE = 10000/25
+    
+    net_size = 25
+
+    for City in Cities:
+        for Layer_Num in Layers:
+            integ_log_path = (
+                output_path / City / f"Layer{Layer_Num}" / "posi_integ_logs.pkl"
+            )
+            an_traectorys_path = (
+                output_path / City / f"Layer{Layer_Num}" / "an_traectorys_logs.pkl"
+            )
+            if (not overite) and integ_log_path.exists() and an_traectorys_path.exists():
+                logger.info(
+                    f"{integ_log_path} and {an_traectorys_path} already exists, skip"
+                )
+                continue
+            if not integ_log_path.parent.exists():
+                integ_log_path.parent.mkdir(parents=True)
+            if not an_traectorys_path.parent.exists():
+                an_traectorys_path.parent.mkdir(parents=True)
+
+            scales = [MAX_SCALE / (net_size**k) for k in range(0, Layer_Num)]
+
+            # if not posi_integ_log:
+            #     posi_integ_log, an_slam = all_runner(
+            #         City, scales, overite_config, return_posi_integ_log=True
+            #     )
+            #     posi_integ_log.append(posi_integ_log)
+            # else:
+            #     an_slam = all_runner(City, scales, overite_config)
+            # an_traectorys_logs.append(an_slam.get_tragety_histroy())
+            posi_integ_logs, an_traectorys_logs = all_runner(
+                City, scales, overite_config, return_posi_integ_log=True
+            )
+            assert len(posi_integ_logs)==len(an_traectorys_logs), f"posi len:{len(posi_integ_logs)}, simulate len:{len(an_traectorys_logs)}"
+            with open(integ_log_path, "wb") as f:
+                pickle.dump(posi_integ_logs, f)
+            with open(an_traectorys_path, "wb") as f:
+                pickle.dump(
+                    an_traectorys_logs,
+                    f
+                )
+
+def analyze_sweep_result(data_path, city, layer_num):
+    data_path = Path(data_path)
+    integ_log_path = data_path / city / f"Layer{layer_num}" / "posi_integ_logs.pkl"
+    an_traectorys_path = data_path / city / f"Layer{layer_num}" / "an_traectorys_logs.pkl"
+    posi_integ_logs = pickle.load(open(integ_log_path, "rb"))
+    an_traectorys_logs = pickle.load(open(an_traectorys_path, "rb"))
+
+    track_lenths=[]
+    tracking_error_logs=[]
+    ATEs=[]
+    # ATE_per_meters=[]
+
+    for idx,(posi_integ_log, an_traectorys_log) in enumerate(zip(posi_integ_logs,an_traectorys_logs)):
+        # lenth of actuall traveling distance at each step
+        track_length=np.cumsum(np.linalg.norm(np.diff(posi_integ_log,axis=0),axis=1))
+        track_length=np.insert(track_length,0,0)
+        diff=np.array(posi_integ_log)-np.array(an_traectorys_log)
+        tracking_error_log=np.linalg.norm(diff,axis=1)
+        ATE=np.mean(tracking_error_log)
+        # ATE_per_meter=sum(ATE)/track_length[-1]
+
+        ATEs.append(ATE)
+        tracking_error_logs.append(tracking_error_log)
+        track_lenths.append(track_length)
+        # ATE_per_meters.append(ATE_per_meter)
+    return tracking_error_logs, track_lenths, ATEs
+    
+
+    
+
+# %%
+sweep_runner(overite= True ,Layers=[1,2,3,4,5,6])
+
+# %%
+configs = load_dataset("SelectiveMultiScale")
+
+Cities = list(configs.keys())
+Layer_Nums=[2,6]
+data_path = Path(f"Results/Sweep")
+
+Layer_Nums=[3,4]
+for city in Cities:
+    fig_shape=configs[city]['figshape']
+    # fig.patch.set_facecolor('White')
+    fig,ax=plt.subplots(*fig_shape,figsize=(fig_shape[1]*5,fig_shape[0]*5),dpi=300)
+    fig.suptitle(f"{city} treatory")
+    axes=ax.ravel()
+
+    integ_log_path = data_path / city / f"Layer{Layer_Nums[0]}" / "posi_integ_logs.pkl"
+    posi_integ_logs = pickle.load(open(integ_log_path, "rb"))
+    for idx,posi_integ_log in enumerate(posi_integ_logs):
+        axes[idx].plot(*zip(*posi_integ_log),'-.',label=f"Ground truth")
+    for layer_num in Layer_Nums:
+        an_traectorys_path = data_path / city / f"Layer{layer_num}" / "an_traectorys_logs.pkl"
+        an_traectorys_logs = pickle.load(open(an_traectorys_path, "rb"))
+        assert len(an_traectorys_logs)==len(posi_integ_logs), f"posi len:{len(posi_integ_logs)}, simulate len:{len(an_traectorys_logs)}"
+        for idx,an_traectorys_log in enumerate(an_traectorys_logs):
+            axes[idx].plot(*zip(*an_traectorys_log),label=f"Layer {layer_num} CAN trajectory")
+            axes[idx].set_title(f"track_{idx}")
+            # axes[idx].set_facecolor('White')
+                # axes[idx].legend()
+    empty_axes=[ax for ax in axes if len(ax.get_lines())<1]
+    for ax in empty_axes:
+        ax.set_visible(False)
         
+    fig.tight_layout()
+    lines_labels = [axes[0].get_legend_handles_labels()]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels)
+    fig.savefig(data_path / f"{city}_trajectory.png")
+
+
+#%%ATE_vs_track_length
+plt.style.use('default')
+Layer_Nums=[3]
+
+for city in Cities:
+    fig_shape=configs[city]['figshape']
+    fig,ax=plt.subplots(*fig_shape,figsize=(fig_shape[0]*5,fig_shape[1]*5),dpi=300)
+    # fig.patch.set_facecolor('White')
+    fig.suptitle(f"{city} ATE to track_length")
+    axes=ax.ravel()
+    for layer_num in Layer_Nums:
+        ATE_per_tracking_length_log=[]
+        tracking_error_logs, track_lenths, ATEs = analyze_sweep_result(data_path, city, layer_num)
+        for path_id in range(len(tracking_error_logs)):
+            tracking_error_log=tracking_error_logs[path_id]
+            track_length=track_lenths[path_id]
+            ATE=ATEs[path_id]
+            ATE_per_tracking_length=ATE/track_length[-1]
+            caption=f"ATE={ATE:.2f}m; ATE per tracking length={ATE_per_tracking_length*1000:.2f} m/km"
+            axes[path_id].plot(track_length,tracking_error_log,label=f"Layer {layer_num} CAN ATE")
+            axes[path_id].fill_between(track_length,0,tracking_error_log,alpha=0.1)
+            axes[path_id].set_xlabel("track length")
+            axes[path_id].set_ylabel("Traking Error")
+            axes[path_id].set_title(caption)
+
+            ATE_per_tracking_length_log.append(ATE_per_tracking_length)
+        print(np.mean(ATE_per_tracking_length_log)*1000)
+
+    empty_axes=[ax for ax in axes if len(ax.get_lines())<1]
+    for ax in empty_axes:
+        ax.set_visible(False)
+
+    fig.tight_layout()
+    lines_labels = [axes[0].get_legend_handles_labels()]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels)
+    fig.savefig(data_path / f"{city}_ATE_vs_track_length.png")
+
+# %%
 
         # CAN_SLAM_Track_Baseline = an_slam.get_tragety_histroy()
         # SLAM_Spike_histroy = an_slam.get_activity_history()[0]
@@ -452,8 +652,6 @@ def track_drawer(track:List,label:List,title:str):
         # # ATE = np.linalg.norm(np.array(data) - np.array(data2)) / len(data)
         # fig = plt.figure()
 
-
-
         # for data, label in zip(integrated_tracks, integrated_labels):
         #     plt.plot(*zip(*data), '-', label=label)
         # # fig = plt.figure()
@@ -465,27 +663,11 @@ def track_drawer(track:List,label:List,title:str):
 
         # plt.legend()
 
-
         # diff=np.array(integrated_tracks)-np.array(Slam_tracks)
         # l2_dist = np.sqrt(np.sum(diff ** 2))
         # # window_size = 5 # 滑动窗口大小为5
         # # l2_dist = np.convolve(l2_dist, np.ones(window_size)/window_size, mode='valid')
         # print(l2_dist)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # %%
@@ -505,20 +687,20 @@ SLAM_Errors_log = [
 
 for idx, (inte_ATE, SLAM_ATE) in enumerate(zip(inte_Errors_log, SLAM_Errors_log)):
     fig = plt.figure()
-    plt.plot(inte_ATE,'o', label=integrated_labels[idx])
-    plt.plot(SLAM_ATE,'-', label=Slam_labels[idx])
+    plt.plot(inte_ATE, "o", label=integrated_labels[idx])
+    plt.plot(SLAM_ATE, "-", label=Slam_labels[idx])
     plt.legend()
 
 # %%
 
-inte_ATEs=np.array(inte_Errors_log).mean(axis=1)
-SLAM_ATEs=np.array(SLAM_Errors_log).mean(axis=1)
+inte_ATEs = np.array(inte_Errors_log).mean(axis=1)
+SLAM_ATEs = np.array(SLAM_Errors_log).mean(axis=1)
 
 # plt.plot(inte_ATEs,'o', label=integrated_labels[0])
 # plt.plot(SLAM_ATEs,'-', label=Slam_labels[0])
 
-plt.loglog(SNRs,inte_ATEs[1:],'o', label=integrated_labels[0])
-plt.loglog(SNRs,SLAM_ATEs[1:],'-', label=Slam_labels[0])
+plt.loglog(SNRs, inte_ATEs[1:], "o", label=integrated_labels[0])
+plt.loglog(SNRs, SLAM_ATEs[1:], "-", label=Slam_labels[0])
 plt.legend()
 
 
@@ -540,21 +722,6 @@ configurations = {
 
 # %%
 
-plt.close("all")
-# data=test_ob.tragety_histroy
-
-# plt.gca().set_title(f"ATE={ATE}")
-# fig.show()
-
-
-sampled_SLAM_Spike_history = SLAM_Spike_histroy[::80]
-# plt.close("all")
-
-
-fig = multi_plot(sampled_SLAM_Spike_history)
-# Adjust spacing between subplots
-# plt.tight_layout()
-fig.show()
 
 
 # # %%
